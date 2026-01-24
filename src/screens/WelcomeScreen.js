@@ -11,8 +11,7 @@ export const WelcomeScreen = ({ navigation }) => {
   };
 
   const handleLogin = () => {
-    // TODO: Navigate to login screen when implemented
-    console.log('Login pressed');
+    navigation.navigate('Login');
   };
 
   return (
@@ -23,7 +22,9 @@ export const WelcomeScreen = ({ navigation }) => {
       <View style={styles.content}>
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Ionicons name="heart-circle" size={100} color={colors.secondary.gold} />
+            <View style={styles.iconBackground}>
+              <Ionicons name="heart-circle" size={80} color={colors.text.white} />
+            </View>
           </View>
           <Text style={styles.appName}>Matrimony App</Text>
           <Text style={styles.tagline}>Find Your Perfect Life Partner</Text>
@@ -34,6 +35,7 @@ export const WelcomeScreen = ({ navigation }) => {
             title="Create New Profile"
             onPress={handleCreateProfile}
             style={styles.createButton}
+            textStyle={styles.createButtonText}
           />
 
           <TouchableOpacity
@@ -72,56 +74,90 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
     paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xxl,
+    paddingVertical: spacing.xxl + spacing.lg,
   },
   header: {
     alignItems: 'center',
     marginTop: spacing.xxl * 2,
   },
   logoContainer: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
+  },
+  iconBackground: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   appName: {
     ...typography.h1,
-    fontSize: 32,
+    fontSize: 34,
     color: colors.text.white,
     marginBottom: spacing.sm,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   tagline: {
     ...typography.body1,
+    fontSize: 17,
     color: colors.text.white,
-    opacity: 0.9,
+    opacity: 0.95,
     textAlign: 'center',
+    fontWeight: '400',
   },
   buttonContainer: {
-    gap: spacing.md,
+    gap: spacing.lg,
   },
   createButton: {
-    marginBottom: spacing.sm,
+    backgroundColor: colors.text.white,
+    shadowColor: colors.text.white,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  createButtonText: {
+    color: colors.primary.main,
+    fontWeight: '700',
   },
   loginButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.md + 2,
     gap: spacing.sm,
+    borderRadius: borderRadius.xl,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   loginButtonText: {
     ...typography.body1,
     color: colors.text.white,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   footer: {
-    gap: spacing.md,
+    gap: spacing.lg,
+    paddingBottom: spacing.md,
   },
   featureRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.lg,
   },
   featureText: {
     ...typography.body2,
+    fontSize: 15,
     color: colors.text.white,
-    opacity: 0.9,
+    opacity: 0.95,
+    fontWeight: '500',
   },
 });

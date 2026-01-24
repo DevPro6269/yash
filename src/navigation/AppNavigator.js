@@ -9,6 +9,7 @@ import { useStore } from '../store/useStore';
 
 import { IntroScreen } from '../screens/IntroScreen';
 import { WelcomeScreen } from '../screens/WelcomeScreen';
+import { LoginScreen } from '../screens/LoginScreen';
 
 import { IdentityStep } from '../screens/onboarding/IdentityStep';
 import { BasicStep } from '../screens/onboarding/BasicStep';
@@ -100,6 +101,7 @@ export const AppNavigator = () => {
           ) : (
             <>
               <Stack.Screen name="Welcome" component={WelcomeScreen} />
+              <Stack.Screen name="Login" component={LoginScreen} />
               <Stack.Screen name="Onboarding" component={OnboardingStack} />
             </>
           )

@@ -40,13 +40,11 @@ export const IntroScreen = ({ navigation }) => {
       setCurrentIndex(nextIndex);
     } else {
       setHasSeenIntro(true);
-      navigation.replace('Welcome');
     }
   };
 
   const handleSkip = () => {
     setHasSeenIntro(true);
-    navigation.replace('Welcome');
   };
 
   const renderSlide = ({ item }) => (

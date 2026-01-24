@@ -4,7 +4,42 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Button, Input } from '../../components';
 import { colors, typography, spacing, borderRadius } from '../../theme';
 import { useStore } from '../../store/useStore';
-import { educationLevels, incomeRanges } from '../../data/mockData';
+
+const educationLevels = [
+  'High School',
+  'Diploma',
+  'Bachelor\'s Degree',
+  'Master\'s Degree',
+  'PhD',
+  'Other',
+];
+
+const professionOptions = [
+  'Business Owner',
+  'Doctor',
+  'Engineer',
+  'Teacher',
+  'Lawyer',
+  'Accountant',
+  'IT Professional',
+  'Government Employee',
+  'Private Employee',
+  'Self Employed',
+  'Student',
+  'Homemaker',
+  'Other',
+];
+
+const incomeRanges = [
+  'Below 3 Lakhs',
+  '3-5 Lakhs',
+  '5-7 Lakhs',
+  '7-10 Lakhs',
+  '10-15 Lakhs',
+  '15-20 Lakhs',
+  '20-30 Lakhs',
+  'Above 30 Lakhs',
+];
 
 export const AboutStep = ({ navigation }) => {
   const { wizardData, setWizardData } = useStore();
@@ -55,15 +90,28 @@ export const AboutStep = ({ navigation }) => {
             ))}
           </View>
 
-          <Input
-            label="Profession"
-            value={profession}
-            onChangeText={setProfession}
-            placeholder="e.g., Software Engineer"
-            style={styles.input}
-          />
+          <Text style={styles.label}>Profession</Text>
+          <View style={styles.optionsGrid}>
+            {professionOptions.map((prof) => (
+              <TouchableOpacity
+                key={prof}
+                style={[
+                  styles.optionButton,
+                  profession === prof && styles.optionButtonSelected,
+                ]}
+                onPress={() => setProfession(prof)}
+              >
+                <Text style={[
+                  styles.optionText,
+                  profession === prof && styles.optionTextSelected,
+                ]}>
+                  {prof}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
-          <Text style={styles.label}>Income Range</Text>
+          <Text style={styles.label}>Income Range (Annual)</Text>
           <View style={styles.optionsGrid}>
             {incomeRanges.map((range) => (
               <TouchableOpacity
@@ -166,15 +214,16 @@ const styles = StyleSheet.create({
   },
   optionButtonSelected: {
     backgroundColor: colors.background.white,
-    borderColor: colors.secondary.gold,
+    borderColor: colors.primary.main,
   },
   optionText: {
     ...typography.body2,
     color: colors.text.white,
+    fontWeight: '500',
   },
   optionTextSelected: {
     color: colors.primary.main,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   buttonContainer: {
     flexDirection: 'row',
