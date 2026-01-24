@@ -1,0 +1,227 @@
+export const mockProfiles = [
+  {
+    id: '1',
+    name: 'Priya Sharma',
+    age: 26,
+    profession: 'Software Engineer',
+    city: 'Mumbai',
+    state: 'Maharashtra',
+    height: '5\'5"',
+    education: 'B.Tech in Computer Science',
+    income: '₹8-10 LPA',
+    bio: 'Looking for a caring and understanding life partner.',
+    verified: true,
+    photo: 'https://i.pravatar.cc/300?img=1',
+    community: 'Hindu',
+    caste: 'Brahmin',
+  },
+  {
+    id: '2',
+    name: 'Anjali Patel',
+    age: 24,
+    profession: 'Doctor',
+    city: 'Ahmedabad',
+    state: 'Gujarat',
+    height: '5\'3"',
+    education: 'MBBS',
+    income: '₹10-12 LPA',
+    bio: 'Family oriented person seeking a compatible match.',
+    verified: true,
+    photo: 'https://i.pravatar.cc/300?img=5',
+    community: 'Hindu',
+    caste: 'Patel',
+  },
+  {
+    id: '3',
+    name: 'Sneha Reddy',
+    age: 28,
+    profession: 'Marketing Manager',
+    city: 'Hyderabad',
+    state: 'Telangana',
+    height: '5\'6"',
+    education: 'MBA',
+    income: '₹12-15 LPA',
+    bio: 'Ambitious professional looking for an equally driven partner.',
+    verified: false,
+    photo: 'https://i.pravatar.cc/300?img=9',
+    community: 'Hindu',
+    caste: 'Reddy',
+  },
+  {
+    id: '4',
+    name: 'Kavya Iyer',
+    age: 25,
+    profession: 'Teacher',
+    city: 'Chennai',
+    state: 'Tamil Nadu',
+    height: '5\'4"',
+    education: 'M.Ed',
+    income: '₹5-7 LPA',
+    bio: 'Traditional values with modern outlook.',
+    verified: true,
+    photo: 'https://i.pravatar.cc/300?img=10',
+    community: 'Hindu',
+    caste: 'Iyer',
+  },
+  {
+    id: '5',
+    name: 'Neha Gupta',
+    age: 27,
+    profession: 'CA',
+    city: 'Delhi',
+    state: 'Delhi',
+    height: '5\'5"',
+    education: 'Chartered Accountant',
+    income: '₹15-20 LPA',
+    bio: 'Looking for someone who values family and career equally.',
+    verified: true,
+    photo: 'https://i.pravatar.cc/300?img=16',
+    community: 'Hindu',
+    caste: 'Agarwal',
+  },
+];
+
+export const mockConnections = {
+  received: [
+    {
+      id: 'r1',
+      profile: mockProfiles[0],
+      timestamp: '2 hours ago',
+      status: 'pending',
+    },
+    {
+      id: 'r2',
+      profile: mockProfiles[1],
+      timestamp: '1 day ago',
+      status: 'pending',
+    },
+  ],
+  sent: [
+    {
+      id: 's1',
+      profile: mockProfiles[2],
+      timestamp: '3 hours ago',
+      status: 'pending',
+    },
+    {
+      id: 's2',
+      profile: mockProfiles[3],
+      timestamp: '2 days ago',
+      status: 'accepted',
+    },
+  ],
+};
+
+export const mockChats = [
+  {
+    id: 'c1',
+    profile: mockProfiles[3],
+    lastMessage: 'Hi! Thanks for connecting.',
+    timestamp: '10:30 AM',
+    unreadCount: 2,
+  },
+  {
+    id: 'c2',
+    profile: mockProfiles[0],
+    lastMessage: 'Would love to know more about you.',
+    timestamp: 'Yesterday',
+    unreadCount: 0,
+  },
+];
+
+export const mockMessages = {
+  c1: [
+    {
+      id: 'm1',
+      text: 'Hi! Thanks for connecting.',
+      sender: 'them',
+      timestamp: '10:30 AM',
+    },
+    {
+      id: 'm2',
+      text: 'Hello! Nice to meet you.',
+      sender: 'me',
+      timestamp: '10:32 AM',
+    },
+  ],
+  c2: [
+    {
+      id: 'm3',
+      text: 'Would love to know more about you.',
+      sender: 'them',
+      timestamp: 'Yesterday',
+    },
+  ],
+};
+
+export const communities = [
+  'Hindu',
+  'Muslim',
+  'Christian',
+  'Sikh',
+  'Buddhist',
+  'Jain',
+  'Other',
+];
+
+export const castes = {
+  Hindu: ['Brahmin', 'Kshatriya', 'Vaishya', 'Shudra', 'Patel', 'Reddy', 'Iyer', 'Agarwal', 'Other'],
+  Muslim: ['Syed', 'Sheikh', 'Pathan', 'Ansari', 'Other'],
+  Christian: ['Catholic', 'Protestant', 'Orthodox', 'Other'],
+  Sikh: ['Jat', 'Khatri', 'Ramgarhia', 'Other'],
+  Buddhist: ['Mahayana', 'Theravada', 'Vajrayana', 'Other'],
+  Jain: ['Digambar', 'Svetambar', 'Other'],
+  Other: ['Prefer not to say'],
+};
+
+export const educationLevels = [
+  'High School',
+  'Diploma',
+  'Bachelor\'s Degree',
+  'Master\'s Degree',
+  'PhD',
+  'Professional Degree',
+];
+
+export const incomeRanges = [
+  'Below ₹3 LPA',
+  '₹3-5 LPA',
+  '₹5-7 LPA',
+  '₹7-10 LPA',
+  '₹10-12 LPA',
+  '₹12-15 LPA',
+  '₹15-20 LPA',
+  'Above ₹20 LPA',
+];
+
+export const indianStates = [
+  'Andhra Pradesh',
+  'Arunachal Pradesh',
+  'Assam',
+  'Bihar',
+  'Chhattisgarh',
+  'Goa',
+  'Gujarat',
+  'Haryana',
+  'Himachal Pradesh',
+  'Jharkhand',
+  'Karnataka',
+  'Kerala',
+  'Madhya Pradesh',
+  'Maharashtra',
+  'Manipur',
+  'Meghalaya',
+  'Mizoram',
+  'Nagaland',
+  'Odisha',
+  'Punjab',
+  'Rajasthan',
+  'Sikkim',
+  'Tamil Nadu',
+  'Telangana',
+  'Tripura',
+  'Uttar Pradesh',
+  'Uttarakhand',
+  'West Bengal',
+  'Delhi',
+];
