@@ -1,13 +1,49 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../components';
 import { colors, typography, spacing, borderRadius } from '../../theme';
-import { mockChats } from '../../data/mockData';
+import { useStore } from '../../store/useStore';
+import { chatService } from '../../services/chatService';
 
 export const ChatsScreen = ({ navigation }) => {
-  const [chats, setChats] = useState(mockChats);
+  const { profile } = useStore();
+  const [chats, setChats] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const mapConversation = (c) => {
+    const me = profile?.id;
+    const other = c.connection.sender_id === me ? c.connection.receiver : c.connection.sender;
+    const name = [other?.first_name, other?.last_name].filter(Boolean).join(' ');
+    return {
+      id: c.id,
+      profile: {
+        id: other?.id,
+        name: name || 'Member',
+        photo: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=800&auto=format&fit=crop',
+      },
+      lastMessage: c.last_message_preview || 'Say hi and start your conversation!',
+      timestamp: c.last_message_at ? new Date(c.last_message_at).toLocaleDateString() : '',
+      unreadCount: 0,
+    };
+  };
+
+  useEffect(() => {
+    const load = async () => {
+      if (!profile?.id) return;
+      setLoading(true);
+      try {
+        const res = await chatService.getMyConversations(profile.id);
+        if (res.success) {
+          setChats((res.data || []).map(mapConversation));
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [profile?.id]);
 
   const handleChatPress = (chatId) => {
     navigation.navigate('ChatDetail', { chatId });
@@ -59,7 +95,7 @@ export const ChatsScreen = ({ navigation }) => {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="chatbubbles-outline" size={64} color={colors.text.light} />
-            <Text style={styles.emptyText}>No conversations yet</Text>
+            <Text style={styles.emptyText}>{loading ? 'Loading...' : 'No conversations yet'}</Text>
             <Text style={styles.emptySubtext}>
               Start connecting with matches to begin chatting
             </Text>

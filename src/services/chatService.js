@@ -19,7 +19,7 @@ export const chatService = {
 
   async getMyConversations(userId) {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('conversations')
         .select(`
           *,
@@ -29,8 +29,12 @@ export const chatService = {
             receiver:profiles!connections_receiver_id_fkey(*)
           )
         `)
-        .or(`connection.sender_id.eq.${userId},connection.receiver_id.eq.${userId}`)
         .order('last_message_at', { ascending: false, nullsFirst: false });
+
+      // Filter by sender/receiver on the foreign table using foreignTable option
+      query = query.or(`sender_id.eq.${userId},receiver_id.eq.${userId}`, { foreignTable: 'connections' });
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return { success: true, data };
@@ -136,13 +140,18 @@ export const chatService = {
 
   async getUnreadCount(userId) {
     try {
-      const { data: conversations } = await supabase
+      // Fetch conversations for this user via joined connections table
+      let convQuery = supabase
         .from('conversations')
         .select(`
           id,
-          connection:connections!inner(sender_id, receiver_id)
-        `)
-        .or(`connection.sender_id.eq.${userId},connection.receiver_id.eq.${userId}`);
+          connections:connections!inner(sender_id, receiver_id)
+        `);
+
+      convQuery = convQuery.or(`sender_id.eq.${userId},receiver_id.eq.${userId}`, { foreignTable: 'connections' });
+
+      const { data: conversations, error: convErr } = await convQuery;
+      if (convErr) throw convErr;
 
       if (!conversations) return { success: true, count: 0 };
 
@@ -161,5 +170,42 @@ export const chatService = {
       console.error('Get unread count error:', error);
       return { success: false, error: error.message, count: 0 };
     }
+  },
+ 
+  // Ensure a conversation exists for an accepted connection
+  async getOrCreateConversationByConnectionId(connectionId) {
+    try {
+      const { data: existing, error: getErr } = await supabase
+        .from('conversations')
+        .select('*')
+        .eq('connection_id', connectionId)
+        .single();
+      if (existing) return { success: true, data: existing };
+      if (getErr && getErr.code !== 'PGRST116') throw getErr;
+
+      const { data, error } = await supabase
+        .from('conversations')
+        .insert({ connection_id: connectionId })
+        .select()
+        .single();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Create conversation error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Subscribe to conversation updates (e.g., last_message_at)
+  subscribeToConversation(conversationId, callback) {
+    const subscription = supabase
+      .channel(`conversations:${conversationId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'conversations', filter: `id=eq.${conversationId}` },
+        (payload) => callback(payload.new)
+      )
+      .subscribe();
+    return subscription;
   },
 };

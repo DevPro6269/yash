@@ -108,7 +108,7 @@ export const HomeScreen = ({ navigation }) => {
         if (error) throw error;
         let mapped = (data || []).map(mapProfile);
 
-        // Fetch existing connections to mark statuses (pending/accepted)
+        // Fetch existing connections to mark statuses (pending/accepted/declined)
         if (profile?.id) {
           const { data: connsRes, success } = await connectionService.getMyConnections(profile.id);
           if (success && Array.isArray(connsRes)) {
@@ -117,7 +117,10 @@ export const HomeScreen = ({ navigation }) => {
               const otherId = c.sender_id === profile.id ? c.receiver_id : c.sender_id;
               statusMap.set(otherId, c.status);
             });
+            // annotate status
             mapped = mapped.map((p) => ({ ...p, requestStatus: statusMap.get(p.id) || p.requestStatus }));
+            // filter out any profiles that already have a connection in any status
+            mapped = mapped.filter((p) => !statusMap.has(p.id));
           }
         }
 

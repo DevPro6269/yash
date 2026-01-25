@@ -1,49 +1,90 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius } from '../theme';
-import { mockMessages, mockChats } from '../data/mockData';
+import { useStore } from '../store/useStore';
+import { chatService } from '../services/chatService';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export const ChatDetailScreen = ({ route, navigation }) => {
-  const { chatId } = route.params;
-  const chat = mockChats.find(c => c.id === chatId);
-  const [messages, setMessages] = useState(mockMessages[chatId] || []);
+  const { chatId } = route.params; // conversation id
+  const { profile } = useStore();
+  const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
+  const [header, setHeader] = useState({ name: 'Member', photo: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=800&auto=format&fit=crop' });
+  const subRef = useRef(null);
+  const insets = useSafeAreaInsets();
 
-  const handleSend = () => {
-    if (inputText.trim()) {
-      const newMessage = {
-        id: `m${Date.now()}`,
-        text: inputText,
-        sender: 'me',
-        timestamp: 'Just now',
-      };
-      setMessages([...messages, newMessage]);
-      setInputText('');
+  const loadMessages = async () => {
+    const res = await chatService.getMessages(chatId, 50);
+    if (res.success) {
+      setMessages(res.data.map(m => ({
+        id: m.id,
+        text: m.content,
+        senderId: m.sender_id,
+        timestamp: new Date(m.created_at).toLocaleTimeString(),
+      })));
     }
   };
+
+  const loadHeader = async () => {
+    // Fetch conversation to determine other user from connection join
+    const res = await chatService.getMyConversations(profile?.id);
+    if (res.success) {
+      const conv = (res.data || []).find(c => c.id === chatId);
+      if (conv) {
+        const me = profile?.id;
+        const other = conv.connection.sender_id === me ? conv.connection.receiver : conv.connection.sender;
+        const name = [other?.first_name, other?.last_name].filter(Boolean).join(' ');
+        setHeader({ name: name || 'Member', photo: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=800&auto=format&fit=crop' });
+      }
+    }
+  };
+
+  const handleSend = async () => {
+    const content = inputText.trim();
+    if (!content) return;
+    setInputText('');
+    // Optimistic
+    const tempId = `temp-${Date.now()}`;
+    setMessages(prev => [...prev, { id: tempId, text: content, senderId: profile?.id, timestamp: new Date().toLocaleTimeString() }]);
+    await chatService.sendMessage(chatId, profile?.id, content);
+  };
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    loadHeader();
+    loadMessages();
+    // Subscribe to new messages
+    subRef.current = chatService.subscribeToMessages(chatId, (newMsg) => {
+      setMessages(prev => [...prev, { id: newMsg.id, text: newMsg.content, senderId: newMsg.sender_id, timestamp: new Date(newMsg.created_at).toLocaleTimeString() }]);
+    });
+    return () => {
+      chatService.unsubscribeFromMessages(subRef.current);
+    };
+  }, [profile?.id, chatId]);
 
   const isInputEmpty = !inputText.trim();
 
   const renderMessage = ({ item }) => (
     <View style={[
       styles.messageContainer,
-      item.sender === 'me' ? styles.myMessage : styles.theirMessage,
+      item.senderId === profile?.id ? styles.myMessage : styles.theirMessage,
     ]}>
       <View style={[
         styles.messageBubble,
-        item.sender === 'me' ? styles.myBubble : styles.theirBubble,
+        item.senderId === profile?.id ? styles.myBubble : styles.theirBubble,
       ]}>
         <Text style={[
           styles.messageText,
-          item.sender === 'me' ? styles.myMessageText : styles.theirMessageText,
+          item.senderId === profile?.id ? styles.myMessageText : styles.theirMessageText,
         ]}>
           {item.text}
         </Text>
         <Text style={[
           styles.messageTime,
-          item.sender === 'me' ? styles.myMessageTime : styles.theirMessageTime,
+          item.senderId === profile?.id ? styles.myMessageTime : styles.theirMessageTime,
         ]}>
           {item.timestamp}
         </Text>
@@ -62,9 +103,9 @@ export const ChatDetailScreen = ({ route, navigation }) => {
         </TouchableOpacity>
         
         <View style={styles.headerContent}>
-          <Image source={{ uri: chat?.profile.photo }} style={styles.avatar} />
+          <Image source={{ uri: header.photo }} style={styles.avatar} />
           <View>
-            <Text style={styles.headerTitle}>{chat?.profile.name}</Text>
+            <Text style={styles.headerTitle}>{header.name}</Text>
             <Text style={styles.headerSubtitle}>Online</Text>
           </View>
         </View>
@@ -78,15 +119,16 @@ export const ChatDetailScreen = ({ route, navigation }) => {
         data={messages}
         renderItem={renderMessage}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.messagesList}
+        contentContainerStyle={[styles.messagesList, { paddingBottom: spacing.xl + Math.max(insets.bottom, 12) + 56 }]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 8) }] }>
           <TextInput
             style={styles.input}
             value={inputText}
