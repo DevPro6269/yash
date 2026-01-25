@@ -1,14 +1,122 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Card, Badge, Button } from '../../components';
 import { colors, typography, spacing, borderRadius } from '../../theme';
-import { mockProfiles } from '../../data/mockData';
+import { supabase } from '../../config/supabase';
+import { useStore } from '../../store/useStore';
 
 export const HomeScreen = ({ navigation }) => {
-  const [profiles, setProfiles] = useState(mockProfiles);
+  const { user ,profile } = useStore();
+  const [profiles, setProfiles] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const getAge = (dob) => {
+    if (!dob) return null;
+    const d = new Date(dob);
+    const diff = Date.now() - d.getTime();
+    const ageDt = new Date(diff);
+    return Math.abs(ageDt.getUTCFullYear() - 1970);
+  };
+
+  const formatHeight = (cm) => {
+    if (!cm) return null;
+    const inches = cm / 2.54;
+    const feet = Math.floor(inches / 12);
+    const remInches = Math.round(inches % 12);
+    return `${feet}' ${remInches}\" (${cm} cm)`;
+  };
+
+  const mapProfile = (p) => {
+    const name = [p.first_name, p.last_name].filter(Boolean).join(' ');
+    const age = getAge(p.dob);
+    const verified = p.verification_status === 'verified';
+    // Resolve image from profile_photos if present, prefer primary and not private
+    let photo = null;
+    if (Array.isArray(p.profile_photos) && p.profile_photos.length > 0) {
+      const publicPhotos = p.profile_photos.filter((ph) => ph && ph.is_private !== true);
+      const primary = publicPhotos.find((ph) => ph.is_primary) || publicPhotos[0];
+      photo = primary?.image_url || null;
+    }
+    // Fallback image if none available
+    if (!photo) {
+      photo = 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=800&auto=format&fit=crop';
+    }
+    return {
+      id: p.id,
+      name,
+      age,
+      verified,
+      profession: p.profession || '—',
+      city: p.city || '—',
+      state: p.state || '—',
+      education: p.education || '—',
+      height: formatHeight(p.height_cm) || '—',
+      bio: p.bio || '—',
+      photo,
+    };
+  };
+
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        // Require profile gender to enforce opposite-gender matching
+        const g = (profile?.gender || '').toLowerCase();
+        if (!g) {
+          setProfiles([]);
+          setError('Please set your gender to see matches');
+          return;
+        }
+        let query = supabase
+          .from('profiles')
+          .select(`
+            id,
+            first_name,
+            last_name,
+            dob,
+            profession,
+            education,
+            city,
+            state,
+            height_cm,
+            bio,
+            verification_status,
+            profile_photos ( image_url, is_primary, is_private )
+          `)
+          .order('id', { ascending: false })
+          .limit(50);
+
+        // Exclude current user's own profile if available
+        if (profile?.id) {
+          query = query.neq('user_id', profile.id);
+        }
+
+        // Show opposite gender profiles always
+        const targetGender = g === 'male' ? 'female' : g === 'female' ? 'male' : null;
+        if (targetGender) {
+          query = query.eq('gender', targetGender);
+        }
+
+        const { data, error } = await query;
+
+        if (error) throw error;
+        const mapped = (data || []).map(mapProfile);
+        setProfiles(mapped);
+      } catch (e) {
+        console.error('Failed to load profiles:', e);
+        setError('Failed to load profiles');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfiles();
+  }, [profile?.gender, profile?.id]);
 
   const handleConnect = (profileId) => {
     console.log('Connect with:', profileId);
@@ -75,9 +183,15 @@ export const HomeScreen = ({ navigation }) => {
       <FlatList
         data={profiles}
         renderItem={renderProfile}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={[styles.listContent, profiles.length === 0 && { paddingTop: spacing.xl }]}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={styles.emptyWrap}>
+            <Ionicons name={loading ? 'hourglass' : 'alert-circle'} size={28} color={colors.text.secondary} />
+            <Text style={styles.emptyText}>{loading ? 'Loading matches...' : (error || 'No profiles found')}</Text>
+          </View>
+        }
       />
 
       <Modal
