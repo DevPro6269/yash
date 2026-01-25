@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Modal } from
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Card, Badge, Button } from '../../components';
+import { connectionService } from '../../services/connectionService';
 import { colors, typography, spacing, borderRadius } from '../../theme';
 import { supabase } from '../../config/supabase';
 import { useStore } from '../../store/useStore';
@@ -105,7 +106,24 @@ export const HomeScreen = ({ navigation }) => {
         const { data, error } = await query;
 
         if (error) throw error;
-        const mapped = (data || []).map(mapProfile);
+        let mapped = (data || []).map(mapProfile);
+
+        // Fetch existing connections to mark statuses (pending/accepted/declined)
+        if (profile?.id) {
+          const { data: connsRes, success } = await connectionService.getMyConnections(profile.id);
+          if (success && Array.isArray(connsRes)) {
+            const statusMap = new Map();
+            connsRes.forEach((c) => {
+              const otherId = c.sender_id === profile.id ? c.receiver_id : c.sender_id;
+              statusMap.set(otherId, c.status);
+            });
+            // annotate status
+            mapped = mapped.map((p) => ({ ...p, requestStatus: statusMap.get(p.id) || p.requestStatus }));
+            // filter out any profiles that already have a connection in any status
+            mapped = mapped.filter((p) => !statusMap.has(p.id));
+          }
+        }
+
         setProfiles(mapped);
       } catch (e) {
         console.error('Failed to load profiles:', e);
@@ -118,8 +136,22 @@ export const HomeScreen = ({ navigation }) => {
     fetchProfiles();
   }, [profile?.gender, profile?.id]);
 
-  const handleConnect = (profileId) => {
-    console.log('Connect with:', profileId);
+  const [requestingId, setRequestingId] = useState(null);
+
+  const handleConnect = async (receiverProfileId) => {
+    if (!profile?.id) return;
+    try {
+      setRequestingId(receiverProfileId);
+      const { success, error } = await connectionService.sendConnectionRequest(profile.id, receiverProfileId);
+      if (!success) {
+        console.error('Send request failed:', error);
+      } else {
+        // Optimistic UI: mark this card as pending
+        setProfiles((prev) => prev.map(p => p.id === receiverProfileId ? { ...p, requestStatus: 'pending' } : p));
+      }
+    } finally {
+      setRequestingId(null);
+    }
   };
 
   const renderProfile = ({ item }) => (
@@ -157,8 +189,10 @@ export const HomeScreen = ({ navigation }) => {
         <Text style={styles.bio} numberOfLines={2}>{item.bio}</Text>
 
         <Button
-          title="Connect"
+          title={item.requestStatus === 'accepted' ? 'Connected' : item.requestStatus === 'pending' ? 'Requested' : 'Connect'}
           onPress={() => handleConnect(item.id)}
+          disabled={item.requestStatus === 'accepted' || item.requestStatus === 'pending' || requestingId === item.id}
+          loading={requestingId === item.id}
           style={styles.connectButton}
         />
       </View>
