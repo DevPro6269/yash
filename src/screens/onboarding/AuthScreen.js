@@ -104,20 +104,36 @@ export const AuthScreen = ({ navigation }) => {
       
       // Step 2: Create profile in database
       const profileData = {
+        // Identity
         gender: wizardData.identity.gender,
-        community_id: wizardData.identity.community?.id,
-        caste_id: wizardData.identity.caste?.id,
+        community_id: wizardData.identity.community,
+        caste_id: wizardData.identity.caste,
+        gotra: wizardData.identity.gotra || null,
+        managed_by: wizardData.identity.profileFor?.toLowerCase() === 'self' ? 'self' : 
+                    wizardData.identity.profileFor?.toLowerCase() === 'son' || wizardData.identity.profileFor?.toLowerCase() === 'daughter' ? 'parent' :
+                    wizardData.identity.profileFor?.toLowerCase() === 'brother' || wizardData.identity.profileFor?.toLowerCase() === 'sister' ? 'sibling' : 'relative',
+        
+        // Basic Info
         first_name: wizardData.basic.firstName,
         last_name: wizardData.basic.lastName,
         dob: wizardData.basic.dob,
+        marital_status: 'never_married', // Default value, can be added to form later
         // Note: height_cm expects integer, but we have "4'8\"" format - skip for now
+        
+        // Professional
         education: wizardData.about.education,
         profession: wizardData.about.profession,
         income_range: wizardData.about.income,
         bio: wizardData.about.bio,
+        
+        // Family
         father_name: wizardData.family.fatherName,
+        father_occupation: wizardData.family.fatherOccupation || null,
         mother_name: wizardData.family.motherName,
+        mother_occupation: wizardData.family.motherOccupation || null,
         siblings_count: wizardData.family.siblings || 0,
+        
+        // Location
         city: wizardData.address.city,
         state: wizardData.address.state,
         country: wizardData.address.country || 'India',
@@ -132,6 +148,69 @@ export const AuthScreen = ({ navigation }) => {
       }
 
       console.log('Profile created successfully:', profileResult.data);
+
+      // Step 3: Upload profile photo to Supabase Storage
+      if (wizardData.photos.photo) {
+        try {
+          console.log('Uploading profile photo to storage...');
+          
+          // Read the file from local URI
+          const response = await fetch(wizardData.photos.photo);
+          const blob = await response.blob();
+          const arrayBuffer = await new Response(blob).arrayBuffer();
+          
+          // Generate unique filename
+          const fileExt = wizardData.photos.photo.split('.').pop();
+          const fileName = `${profileResult.data.id}_${Date.now()}.${fileExt}`;
+          const filePath = `${profileResult.data.id}/${fileName}`;
+          
+          // Upload to Supabase Storage bucket 'profile-photos'
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('profile-photos')
+            .upload(filePath, arrayBuffer, {
+              contentType: `image/${fileExt}`,
+              upsert: false,
+            });
+
+          if (uploadError) {
+            console.error('Storage upload error:', uploadError);
+            throw uploadError;
+          }
+
+          console.log('Photo uploaded to storage:', uploadData.path);
+
+          // Get public URL for the uploaded photo
+          const { data: urlData } = supabase.storage
+            .from('profile-photos')
+            .getPublicUrl(filePath);
+
+          const publicUrl = urlData.publicUrl;
+          console.log('Public URL:', publicUrl);
+
+          // Save photo URL to profile_photos table
+          const { data: photoData, error: photoError } = await supabase
+            .from('profile_photos')
+            .insert({
+              profile_id: profileResult.data.id,
+              image_url: publicUrl,
+              storage_path: filePath,
+              is_primary: true,
+              is_private: false,
+            })
+            .select()
+            .single();
+
+          if (photoError) {
+            console.error('Photo database insert error:', photoError);
+            // Don't fail profile creation if photo DB insert fails
+          } else {
+            console.log('Profile photo saved to database successfully');
+          }
+        } catch (photoErr) {
+          console.error('Photo upload exception:', photoErr);
+          // Don't fail profile creation if photo upload fails
+        }
+      }
 
       // Update local store with user data
       const localUserData = {
@@ -307,6 +386,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     flex: 1,
+    backgroundColor: colors.background.white,
   },
   nextButton: {
     flex: 2,

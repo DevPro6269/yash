@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../components';
@@ -15,52 +15,50 @@ export const WelcomeScreen = ({ navigation }) => {
   };
 
   return (
-    <LinearGradient
-      colors={colors.background.gradient}
-      style={styles.container}
-    >
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <View style={styles.iconBackground}>
-              <Ionicons name="heart-circle" size={80} color={colors.text.white} />
-            </View>
+    <LinearGradient colors={colors.background.gradient} style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+
+      {/* Hero */}
+      <View style={styles.hero}>
+        <View style={styles.heroIconWrap}>
+          <View style={styles.heroIconBg}>
+            <Ionicons name="heart" size={56} color={colors.text.white} />
           </View>
-          <Text style={styles.appName}>Matrimony App</Text>
-          <Text style={styles.tagline}>Find Your Perfect Life Partner</Text>
+          <View style={styles.ring} />
+          <View style={[styles.ring, styles.ring2]} />
+        </View>
+        <Text style={styles.title}>Find your life partner</Text>
+        <Text style={styles.subtitle}>Serious matchmaking built for trust, privacy and families.</Text>
+      </View>
+
+      {/* Primary CTA Card */}
+      <View style={styles.card}>
+        <View style={styles.points}>
+          <View style={styles.pointRow}>
+            <Ionicons name="shield-checkmark" size={18} color={colors.secondary.gold} />
+            <Text style={styles.pointText}>Verified profiles and secure onboarding</Text>
+          </View>
+          <View style={styles.pointRow}>
+            <Ionicons name="people" size={18} color={colors.secondary.gold} />
+            <Text style={styles.pointText}>Matches by community, values and interests</Text>
+          </View>
+          <View style={styles.pointRow}>
+            <Ionicons name="chatbubbles" size={18} color={colors.secondary.gold} />
+            <Text style={styles.pointText}>Private chat once there’s a mutual interest</Text>
+          </View>
         </View>
 
-        <View style={styles.buttonContainer}>
-          <Button
-            title="Create New Profile"
-            onPress={handleCreateProfile}
-            style={styles.createButton}
-            textStyle={styles.createButtonText}
-          />
+        <Button
+          title="Create your profile"
+          onPress={handleCreateProfile}
+          style={styles.primaryCta}
+          textStyle={styles.primaryCtaText}
+        />
 
-          <TouchableOpacity
-            style={styles.loginButton}
-            onPress={handleLogin}
-          >
-            <Text style={styles.loginButtonText}>Already have an account? Login</Text>
-            <Ionicons name="arrow-forward" size={20} color={colors.text.white} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.footer}>
-          <View style={styles.featureRow}>
-            <Ionicons name="shield-checkmark" size={20} color={colors.secondary.gold} />
-            <Text style={styles.featureText}>100% Verified Profiles</Text>
-          </View>
-          <View style={styles.featureRow}>
-            <Ionicons name="lock-closed" size={20} color={colors.secondary.gold} />
-            <Text style={styles.featureText}>Secure & Private</Text>
-          </View>
-          <View style={styles.featureRow}>
-            <Ionicons name="people" size={20} color={colors.secondary.gold} />
-            <Text style={styles.featureText}>Trusted by Thousands</Text>
-          </View>
-        </View>
+        <TouchableOpacity style={styles.secondaryLink} onPress={handleLogin}>
+          <Text style={styles.secondaryLinkText}>Already have an account?</Text>
+          <Ionicons name="arrow-forward" size={18} color={colors.text.white} />
+        </TouchableOpacity>
       </View>
     </LinearGradient>
   );
@@ -70,94 +68,123 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
-    flex: 1,
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xxl + spacing.lg,
-  },
-  header: {
+  hero: {
     alignItems: 'center',
-    marginTop: spacing.xxl * 2,
+    paddingTop: spacing.xxl * 1.2,
+    paddingHorizontal: spacing.lg,
   },
-  logoContainer: {
-    marginBottom: spacing.xl,
-  },
-  iconBackground: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  heroIconWrap: {
+    marginBottom: spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
-  appName: {
+  heroIconBg: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ring: {
+    position: 'absolute',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  ring2: {
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  title: {
     ...typography.h1,
-    fontSize: 34,
     color: colors.text.white,
-    marginBottom: spacing.sm,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  tagline: {
-    ...typography.body1,
-    fontSize: 17,
-    color: colors.text.white,
-    opacity: 0.95,
     textAlign: 'center',
-    fontWeight: '400',
+    marginTop: spacing.md,
   },
-  buttonContainer: {
+  subtitle: {
+    ...typography.body1,
+    color: colors.text.white,
+    opacity: 0.9,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    maxWidth: 340,
+  },
+  card: {
+    marginTop: spacing.xxl,
+    marginHorizontal: spacing.xl,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: borderRadius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    padding: spacing.xl,
     gap: spacing.lg,
   },
-  createButton: {
+  points: {
+    gap: spacing.sm,
+  },
+  pointRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  pointText: {
+    ...typography.body1,
+    color: colors.text.white,
+    opacity: 0.95,
+  },
+  primaryCta: {
     backgroundColor: colors.text.white,
     shadowColor: colors.text.white,
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  createButtonText: {
+  primaryCtaText: {
     color: colors.primary.main,
     fontWeight: '700',
   },
-  loginButton: {
+  secondaryLink: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.md + 2,
-    gap: spacing.sm,
-    borderRadius: borderRadius.xl,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    gap: spacing.xs,
   },
-  loginButtonText: {
+  secondaryLinkText: {
     ...typography.body1,
     color: colors.text.white,
-    fontWeight: '600',
+    opacity: 0.9,
   },
-  footer: {
-    gap: spacing.lg,
-    paddingBottom: spacing.md,
+  badgesWrap: {
+    marginTop: spacing.xl,
+    paddingHorizontal: spacing.xl,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingBottom: spacing.lg,
   },
-  featureRow: {
+  badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    paddingVertical: spacing.sm + 2,
-    paddingHorizontal: spacing.md,
+    gap: spacing.xs,
+    backgroundColor: 'rgba(255,255,255,0.10)',
     borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
+    paddingVertical: spacing.xs + 2,
+    paddingHorizontal: spacing.md,
   },
-  featureText: {
+  badgeText: {
     ...typography.body2,
-    fontSize: 15,
     color: colors.text.white,
     opacity: 0.95,
-    fontWeight: '500',
   },
 });

@@ -1,45 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Button, Input } from '../../components';
+import { Button, Input, Dropdown } from '../../components';
+import { highestEducationOptions, professionOptions, incomeRanges } from '../../const/aboutOptions';
 import { colors, typography, spacing, borderRadius } from '../../theme';
 import { useStore } from '../../store/useStore';
 
-const educationLevels = [
-  'High School',
-  'Diploma',
-  'Bachelor\'s Degree',
-  'Master\'s Degree',
-  'PhD',
-  'Other',
-];
-
-const professionOptions = [
-  'Business Owner',
-  'Doctor',
-  'Engineer',
-  'Teacher',
-  'Lawyer',
-  'Accountant',
-  'IT Professional',
-  'Government Employee',
-  'Private Employee',
-  'Self Employed',
-  'Student',
-  'Homemaker',
-  'Other',
-];
-
-const incomeRanges = [
-  'Below 3 Lakhs',
-  '3-5 Lakhs',
-  '5-7 Lakhs',
-  '7-10 Lakhs',
-  '10-15 Lakhs',
-  '15-20 Lakhs',
-  '20-30 Lakhs',
-  'Above 30 Lakhs',
-];
+// Static option arrays moved to '../../cont/aboutOptions'
 
 export const AboutStep = ({ navigation }) => {
   const { wizardData, setWizardData } = useStore();
@@ -69,68 +36,35 @@ export const AboutStep = ({ navigation }) => {
         </View>
 
         <View style={styles.form}>
-          <Text style={styles.label}>Education</Text>
-          <View style={styles.optionsGrid}>
-            {educationLevels.map((level) => (
-              <TouchableOpacity
-                key={level}
-                style={[
-                  styles.optionButton,
-                  education === level && styles.optionButtonSelected,
-                ]}
-                onPress={() => setEducation(level)}
-              >
-                <Text style={[
-                  styles.optionText,
-                  education === level && styles.optionTextSelected,
-                ]}>
-                  {level}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <Dropdown
+            label="Highest Education"
+            placeholder="Select education"
+            value={education}
+            options={highestEducationOptions}
+            searchable
+            searchPlaceholder="Search education..."
+            onSelect={(selected) => setEducation(selected.id)}
+          />
 
-          <Text style={styles.label}>Profession</Text>
-          <View style={styles.optionsGrid}>
-            {professionOptions.map((prof) => (
-              <TouchableOpacity
-                key={prof}
-                style={[
-                  styles.optionButton,
-                  profession === prof && styles.optionButtonSelected,
-                ]}
-                onPress={() => setProfession(prof)}
-              >
-                <Text style={[
-                  styles.optionText,
-                  profession === prof && styles.optionTextSelected,
-                ]}>
-                  {prof}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <Dropdown
+            label="Profession"
+            placeholder="Select profession"
+            value={profession}
+            options={professionOptions}
+            searchable
+            searchPlaceholder="Search profession..."
+            onSelect={(selected) => setProfession(selected.id)}
+          />
 
-          <Text style={styles.label}>Income Range (Annual)</Text>
-          <View style={styles.optionsGrid}>
-            {incomeRanges.map((range) => (
-              <TouchableOpacity
-                key={range}
-                style={[
-                  styles.optionButton,
-                  income === range && styles.optionButtonSelected,
-                ]}
-                onPress={() => setIncome(range)}
-              >
-                <Text style={[
-                  styles.optionText,
-                  income === range && styles.optionTextSelected,
-                ]}>
-                  {range}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <Dropdown
+            label="Income Range (Yearly Or Annualy)"
+            placeholder="Select income range"
+            value={income}
+            options={incomeRanges}
+            searchable
+            searchPlaceholder="Search income range..."
+            onSelect={(selected) => setIncome(selected.id)}
+          />
 
           <Input
             label="Bio"
@@ -198,39 +132,14 @@ const styles = StyleSheet.create({
   input: {
     marginBottom: spacing.md,
   },
-  optionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  optionButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  optionButtonSelected: {
-    backgroundColor: colors.background.white,
-    borderColor: colors.primary.main,
-  },
-  optionText: {
-    ...typography.body2,
-    color: colors.text.white,
-    fontWeight: '500',
-  },
-  optionTextSelected: {
-    color: colors.primary.main,
-    fontWeight: '700',
-  },
+  
   buttonContainer: {
     flexDirection: 'row',
     gap: spacing.md,
   },
   backButton: {
     flex: 1,
+    backgroundColor: colors.background.white
   },
   nextButton: {
     flex: 2,

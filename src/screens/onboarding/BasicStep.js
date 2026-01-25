@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Button, Input } from '../../components';
+import { Button, Input, Dropdown } from '../../components';
 import { colors, typography, spacing, borderRadius } from '../../theme';
 import { useStore } from '../../store/useStore';
 
 const heightOptions = [
-  "4'6\"", "4'7\"", "4'8\"", "4'9\"", "4'10\"", "4'11\"",
-  "5'0\"", "5'1\"", "5'2\"", "5'3\"", "5'4\"", "5'5\"", "5'6\"", "5'7\"", "5'8\"", "5'9\"", "5'10\"", "5'11\"",
-  "6'0\"", "6'1\"", "6'2\"", "6'3\"", "6'4\"", "6'5\"", "6'6\"", "6'7\"", "6'8\"",
+  { id: "4'6\"", name: "4'6\"" }, { id: "4'7\"", name: "4'7\"" }, { id: "4'8\"", name: "4'8\"" }, { id: "4'9\"", name: "4'9\"" }, { id: "4'10\"", name: "4'10\"" }, { id: "4'11\"", name: "4'11\"" },
+  { id: "5'0\"", name: "5'0\"" }, { id: "5'1\"", name: "5'1\"" }, { id: "5'2\"", name: "5'2\"" }, { id: "5'3\"", name: "5'3\"" }, { id: "5'4\"", name: "5'4\"" }, { id: "5'5\"", name: "5'5\"" }, { id: "5'6\"", name: "5'6\"" }, { id: "5'7\"", name: "5'7\"" }, { id: "5'8\"", name: "5'8\"" }, { id: "5'9\"", name: "5'9\"" }, { id: "5'10\"", name: "5'10\"" }, { id: "5'11\"", name: "5'11\"" },
+  { id: "6'0\"", name: "6'0\"" }, { id: "6'1\"", name: "6'1\"" }, { id: "6'2\"", name: "6'2\"" }, { id: "6'3\"", name: "6'3\"" }, { id: "6'4\"", name: "6'4\"" }, { id: "6'5\"", name: "6'5\"" }, { id: "6'6\"", name: "6'6\"" }, { id: "6'7\"", name: "6'7\"" }, { id: "6'8\"", name: "6'8\"" },
 ];
 
 export const BasicStep = ({ navigation }) => {
@@ -19,6 +19,10 @@ export const BasicStep = ({ navigation }) => {
   const [dob, setDob] = useState(wizardData.basic.dob ? new Date(wizardData.basic.dob) : null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [height, setHeight] = useState(wizardData.basic.height || '');
+
+  // Only allow users who are 18+ to select DOB
+  const today = new Date();
+  const maxDob = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
 
   const handleDateChange = (event, selectedDate) => {
     setShowDatePicker(Platform.OS === 'ios');
@@ -90,38 +94,22 @@ export const BasicStep = ({ navigation }) => {
                 mode="date"
                 display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                 onChange={handleDateChange}
-                maximumDate={new Date()}
+                maximumDate={maxDob}
                 minimumDate={new Date(1950, 0, 1)}
               />
             )}
           </View>
 
           <View style={styles.input}>
-            <Text style={styles.label}>Height</Text>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              style={styles.heightScroll}
-              contentContainerStyle={styles.heightScrollContent}
-            >
-              {heightOptions.map((option) => (
-                <TouchableOpacity
-                  key={option}
-                  style={[
-                    styles.heightOption,
-                    height === option && styles.heightOptionSelected,
-                  ]}
-                  onPress={() => setHeight(option)}
-                >
-                  <Text style={[
-                    styles.heightOptionText,
-                    height === option && styles.heightOptionTextSelected,
-                  ]}>
-                    {option}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <Dropdown
+              label="Height"
+              placeholder="Select height"
+              value={height}
+              options={heightOptions}
+              searchable
+              searchPlaceholder="Search height..."
+              onSelect={(selected) => setHeight(selected.id || selected.value)}
+            />
           </View>
         </View>
 
@@ -237,6 +225,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     flex: 1,
+    backgroundColor: colors.background.white,
   },
   nextButton: {
     flex: 2,

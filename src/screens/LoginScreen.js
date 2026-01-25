@@ -15,6 +15,18 @@ export const LoginScreen = ({ navigation }) => {
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Ensure only digits are stored and cap at 10 characters
+  const handlePhoneChange = (text) => {
+    const digitsOnly = text.replace(/\D/g, '').slice(0, 10);
+    setPhone(digitsOnly);
+  };
+
+  // Ensure OTP is numeric and max 6 digits
+  const handleOtpChange = (text) => {
+    const digitsOnly = text.replace(/\D/g, '').slice(0, 6);
+    setOtp(digitsOnly);
+  };
+
   const handleSendOTP = async () => {
     if (phone.length !== 10) {
       Alert.alert('Invalid Phone', 'Please enter a valid 10-digit phone number');
@@ -191,7 +203,7 @@ export const LoginScreen = ({ navigation }) => {
             <Input
               label="Phone Number"
               value={phone}
-              onChangeText={setPhone}
+              onChangeText={handlePhoneChange}
               placeholder="Enter 10-digit phone number"
               keyboardType="phone-pad"
               style={styles.input}
@@ -201,7 +213,7 @@ export const LoginScreen = ({ navigation }) => {
               <Input
                 label="OTP"
                 value={otp}
-                onChangeText={setOtp}
+                onChangeText={handleOtpChange}
                 placeholder="Enter 6-digit OTP"
                 keyboardType="number-pad"
                 style={styles.input}
@@ -301,6 +313,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     flex: 1,
+    backgroundColor: colors.background.white,
   },
   nextButton: {
     flex: 2,

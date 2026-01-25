@@ -1,19 +1,22 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Button, Input } from '../../components';
+import { Button, Input, Dropdown } from '../../components';
+import { namePrefixOptions } from '../../const/namePrefixes';
 import { colors, typography, spacing } from '../../theme';
 import { useStore } from '../../store/useStore';
 
 export const FamilyStep = ({ navigation }) => {
   const { wizardData, setWizardData } = useStore();
   const [fatherName, setFatherName] = useState(wizardData.family.fatherName || '');
+  const [fatherPrefix, setFatherPrefix] = useState(wizardData.family.fatherPrefix || 'Mr.');
   const [fatherOccupation, setFatherOccupation] = useState(wizardData.family.fatherOccupation || '');
   const [motherName, setMotherName] = useState(wizardData.family.motherName || '');
+  const [motherPrefix, setMotherPrefix] = useState(wizardData.family.motherPrefix || 'Ms.');
   const [motherOccupation, setMotherOccupation] = useState(wizardData.family.motherOccupation || '');
 
   const handleNext = () => {
-    setWizardData('family', { fatherName, fatherOccupation, motherName, motherOccupation });
+    setWizardData('family', { fatherPrefix, fatherName, fatherOccupation, motherPrefix, motherName, motherOccupation });
     navigation.navigate('AddressStep');
   };
 
@@ -33,13 +36,30 @@ export const FamilyStep = ({ navigation }) => {
         </View>
 
         <View style={styles.form}>
-          <Input
-            label="Father's Name"
-            value={fatherName}
-            onChangeText={setFatherName}
-            placeholder="Enter father's name"
-            style={styles.input}
-          />
+          <Text style={styles.groupLabel}>Father's Name</Text>
+          <View style={styles.nameRow}>
+            <View style={styles.prefixInline}>
+              <Dropdown
+                placeholder="Prefix"
+                value={fatherPrefix}
+                options={namePrefixOptions}
+                searchable
+                searchPlaceholder="Search prefix..."
+                onSelect={(opt) => setFatherPrefix(opt.id)}
+                style={styles.prefixDropdown}
+                searchPlaceholderStyle={styles.hidden}
+              />
+            </View>
+            <View style={styles.nameInline}>
+              <Input
+                value={fatherName}
+                onChangeText={setFatherName}
+                placeholder="Enter father's name"
+                style={styles.input}
+                inputStyle={styles.nameInput}
+              />
+            </View>
+          </View>
 
           <Input
             label="Father's Occupation"
@@ -49,13 +69,30 @@ export const FamilyStep = ({ navigation }) => {
             style={styles.input}
           />
 
-          <Input
-            label="Mother's Name"
-            value={motherName}
-            onChangeText={setMotherName}
-            placeholder="Enter mother's name"
-            style={styles.input}
-          />
+          <Text style={styles.groupLabel}>Mother's Name</Text>
+          <View style={styles.nameRow}>
+            <View style={styles.prefixInline}>
+              <Dropdown
+                placeholder="Prefix"
+                value={motherPrefix}
+                options={namePrefixOptions}
+                searchable
+                searchPlaceholder="Search prefix..."
+                onSelect={(opt) => setMotherPrefix(opt.id)}
+                style={styles.prefixDropdown}
+                searchPlaceholderStyle={styles.hidden}
+              />
+            </View>
+            <View style={styles.nameInline}>
+              <Input
+                value={motherName}
+                onChangeText={setMotherName}
+                placeholder="Enter mother's name"
+                style={styles.input}
+                inputStyle={styles.nameInput}
+              />
+            </View>
+          </View>
 
           <Input
             label="Mother's Occupation"
@@ -76,7 +113,7 @@ export const FamilyStep = ({ navigation }) => {
           <Button
             title="Next"
             onPress={handleNext}
-            disabled={!fatherName || !fatherOccupation || !motherName || !motherOccupation}
+            disabled={!fatherPrefix || !fatherName || !fatherOccupation || !motherPrefix || !motherName || !motherOccupation}
             style={styles.nextButton}
           />
         </View>
@@ -111,6 +148,33 @@ const styles = StyleSheet.create({
   },
   form: {
     marginBottom: spacing.xl,
+  },
+  groupLabel: {
+    ...typography.label,
+    color: colors.text.white,
+    marginBottom: spacing.sm,
+    fontWeight: '600',
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  prefixInline: {
+    width: 110,
+  },
+  prefixDropdown: {
+    minHeight: 48,
+  },
+  nameInline: {
+    flex: 1,
+  },
+  nameInput: {
+    paddingVertical: 12,
+  },
+  hidden: {
+    display: 'none',
   },
   input: {
     marginBottom: spacing.md,

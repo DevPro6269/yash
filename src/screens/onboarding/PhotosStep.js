@@ -21,8 +21,7 @@ export const PhotosStep = ({ navigation }) => {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [3, 4],
+      allowsEditing: false,
       quality: 0.8,
     });
 
@@ -47,8 +46,8 @@ export const PhotosStep = ({ navigation }) => {
     >
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>Add Your Photo</Text>
-          <Text style={styles.subtitle}>Step 6 of 6</Text>
+          <Text style={styles.title}>Add Your Photo *</Text>
+          <Text style={styles.subtitle}>Step 6 of 6 • Required</Text>
         </View>
 
         <View style={styles.photoContainer}>
@@ -127,8 +126,8 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   photo: {
-    width: 250,
-    height: 333,
+    width: 150,
+    height: 100,
     borderRadius: borderRadius.lg,
     borderWidth: 4,
     borderColor: colors.background.white,

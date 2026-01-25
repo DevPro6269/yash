@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Button, Input } from '../../components';
+import { Button, Input, Dropdown } from '../../components';
 import { colors, typography, spacing, borderRadius } from '../../theme';
 import { useStore } from '../../store/useStore';
-import { indianStates } from '../../data/mockData';
+import { indianStates, stateCityMap } from '../../data/mockData';
+
 
 export const AddressStep = ({ navigation }) => {
   const { wizardData, setWizardData } = useStore();
@@ -12,6 +13,8 @@ export const AddressStep = ({ navigation }) => {
   const [city, setCity] = useState(wizardData.address.city || '');
   const [address, setAddress] = useState(wizardData.address.address || '');
   const [showStates, setShowStates] = useState(false);
+  const stateOptions = indianStates.map((s) => ({ id: s, name: s }));
+  const cityOptions = (stateCityMap[state] || []).map((c) => ({ id: c, name: c }));
 
   const handleNext = () => {
     setWizardData('address', { state, city, address });
@@ -34,47 +37,28 @@ export const AddressStep = ({ navigation }) => {
         </View>
 
         <View style={styles.form}>
-          <Text style={styles.label}>State</Text>
-          <TouchableOpacity
-            style={styles.dropdown}
-            onPress={() => setShowStates(!showStates)}
-          >
-            <Text style={styles.dropdownText}>
-              {state || 'Select State'}
-            </Text>
-          </TouchableOpacity>
+          <Dropdown
+            label="State"
+            placeholder="Select State"
+            value={state}
+            options={stateOptions}
+            searchable
+            searchPlaceholder="Search state..."
+            onSelect={(selected) => {
+              setState(selected.id);
+              setCity('');
+            }}
+          />
 
-          {showStates && (
-            <View style={styles.optionsGrid}>
-              {indianStates.map((s) => (
-                <TouchableOpacity
-                  key={s}
-                  style={[
-                    styles.optionButton,
-                    state === s && styles.optionButtonSelected,
-                  ]}
-                  onPress={() => {
-                    setState(s);
-                    setShowStates(false);
-                  }}
-                >
-                  <Text style={[
-                    styles.optionText,
-                    state === s && styles.optionTextSelected,
-                  ]}>
-                    {s}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-
-          <Input
+          <Dropdown
             label="City"
+            placeholder={state ? 'Select City' : 'Select state first'}
             value={city}
-            onChangeText={setCity}
-            placeholder="Enter city"
-            style={styles.input}
+            options={cityOptions}
+            searchable
+            searchPlaceholder="Search city..."
+            onSelect={(selected) => setCity(selected.id)}
+            disabled={!state}
           />
 
           <Input

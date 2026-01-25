@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
   },
   label: {
     ...typography.label,
-    color: colors.text.secondary,
+    color: colors.text.white,
     marginBottom: spacing.sm,
     fontWeight: '500',
   },
