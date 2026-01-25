@@ -1,25 +1,80 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Card, Button } from '../../components';
 import { colors, typography, spacing, borderRadius } from '../../theme';
-import { mockConnections } from '../../data/mockData';
+import { useStore } from '../../store/useStore';
+import { connectionService } from '../../services/connectionService';
 
 export const ConnectionsScreen = () => {
+  const { profile } = useStore();
   const [activeTab, setActiveTab] = useState('received');
-  const [connections, setConnections] = useState(mockConnections);
+  const [connections, setConnections] = useState({ received: [], sent: [] });
+  const [loading, setLoading] = useState(false);
 
-  const handleAccept = (id) => {
-    console.log('Accept:', id);
+  const loadData = async () => {
+    if (!profile?.id) return;
+    try {
+      setLoading(true);
+      // Incoming pending requests
+      const receivedRes = await connectionService.getPendingRequests(profile.id);
+      const received = (receivedRes.success ? receivedRes.data : []).map((c) => ({
+        id: c.id,
+        status: c.status,
+        profile: {
+          id: c.sender?.id,
+          name: [c.sender?.first_name, c.sender?.last_name].filter(Boolean).join(' '),
+          age: c.sender?.dob ? Math.abs(new Date(Date.now() - new Date(c.sender.dob).getTime()).getUTCFullYear() - 1970) : null,
+          profession: c.sender?.profession || '—',
+          city: [c.sender?.city, c.sender?.state].filter(Boolean).join(', '),
+          photo: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=800&auto=format&fit=crop',
+        },
+        timestamp: new Date(c.created_at).toLocaleDateString(),
+      }));
+
+      // Outgoing pending requests
+      const allMineRes = await connectionService.getMyConnections(profile.id, 'pending');
+      const sent = (allMineRes.success ? allMineRes.data : [])
+        .filter((c) => c.sender_id === profile.id)
+        .map((c) => ({
+          id: c.id,
+          status: c.status,
+          profile: {
+            id: c.receiver?.id,
+            name: [c.receiver?.first_name, c.receiver?.last_name].filter(Boolean).join(' '),
+            age: c.receiver?.dob ? Math.abs(new Date(Date.now() - new Date(c.receiver.dob).getTime()).getUTCFullYear() - 1970) : null,
+            profession: c.receiver?.profession || '—',
+            city: [c.receiver?.city, c.receiver?.state].filter(Boolean).join(', '),
+            photo: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=800&auto=format&fit=crop',
+          },
+          timestamp: new Date(c.created_at).toLocaleDateString(),
+        }));
+
+      setConnections({ received, sent });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDecline = (id) => {
-    console.log('Decline:', id);
+  useEffect(() => {
+    loadData();
+  }, [profile?.id]);
+
+  const handleAccept = async (id) => {
+    const res = await connectionService.acceptConnectionRequest(id);
+    if (res.success) loadData();
   };
 
-  const handleCancel = (id) => {
-    console.log('Cancel:', id);
+  const handleDecline = async (id) => {
+    const res = await connectionService.declineConnectionRequest(id);
+    if (res.success) loadData();
+  };
+
+  const handleCancel = async (id) => {
+    // For simplicity, decline own pending sent request (or implement a delete endpoint later)
+    const res = await connectionService.declineConnectionRequest(id);
+    if (res.success) loadData();
   };
 
   const renderReceivedRequest = ({ item }) => (
@@ -125,7 +180,7 @@ export const ConnectionsScreen = () => {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="people-outline" size={64} color={colors.text.light} />
-            <Text style={styles.emptyText}>No {activeTab} requests</Text>
+            <Text style={styles.emptyText}>{loading ? 'Loading...' : `No ${activeTab} requests`}</Text>
           </View>
         }
       />
