@@ -10,7 +10,7 @@ import { supabase } from '../../config/supabase';
 const STATIC_OTP = '123456'; // Development OTP - remove in production
 
 export const AuthScreen = ({ navigation }) => {
-  const { setUser, wizardData } = useStore();
+  const { setUser, setProfile, wizardData } = useStore();
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
@@ -228,6 +228,7 @@ export const AuthScreen = ({ navigation }) => {
       };
       
       setUser(localUserData);
+      setProfile(profileResult.data);
       
       Alert.alert(
         'Success!', 

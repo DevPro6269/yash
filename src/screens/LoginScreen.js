@@ -9,7 +9,7 @@ import { supabase } from '../config/supabase';
 const STATIC_OTP = '123456'; // Development OTP
 
 export const LoginScreen = ({ navigation }) => {
-  const { setUser } = useStore();
+  const { setUser, setProfile } = useStore();
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
@@ -132,7 +132,7 @@ export const LoginScreen = ({ navigation }) => {
         .update({ last_login_at: new Date().toISOString() })
         .eq('id', userData.id);
 
-      // Set user in store
+      // Set user and profile in store
       const localUserData = {
         id: userData.id,
         profileId: profileData.id,
@@ -155,6 +155,7 @@ export const LoginScreen = ({ navigation }) => {
       };
 
       setUser(localUserData);
+      setProfile(profileData);
 
       Alert.alert(
         'Login Successful!',
