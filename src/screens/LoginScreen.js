@@ -6,10 +6,8 @@ import { colors, typography, spacing, borderRadius } from '../theme';
 import { useStore } from '../store/useStore';
 import { supabase } from '../config/supabase';
 
-const STATIC_OTP = '123456'; // Development OTP
-
 export const LoginScreen = ({ navigation }) => {
-  const { setUser, setProfile } = useStore();
+  const { sendOTP, verifyOTP } = useStore();
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
@@ -27,6 +25,8 @@ export const LoginScreen = ({ navigation }) => {
     setOtp(digitsOnly);
   };
 
+  const formatPhone = (raw) => `+91${raw}`; // Adjust if you support multiple countries
+
   const handleSendOTP = async () => {
     if (phone.length !== 10) {
       Alert.alert('Invalid Phone', 'Please enter a valid 10-digit phone number');
@@ -36,44 +36,36 @@ export const LoginScreen = ({ navigation }) => {
     setLoading(true);
 
     try {
-      // Check if user exists with this phone number
-      const { data: existingUser, error: userError } = await supabase
+      // Optional: ensure the user has a profile before sending OTP
+      const { data: existingUser } = await supabase
         .from('users')
         .select('id')
         .eq('phone_number', phone)
         .single();
 
       if (!existingUser) {
-        Alert.alert(
-          'Account Not Found',
-          'No account exists with this phone number. Please create a new profile.',
-          [{ text: 'OK' }]
-        );
+        Alert.alert('Account Not Found', 'No account exists with this phone number. Please create a new profile.', [{ text: 'OK' }]);
         return;
       }
 
-      // Check if user has a profile
-      const { data: profile, error: profileError } = await supabase
+      const { data: profile } = await supabase
         .from('profiles')
         .select('id')
         .eq('user_id', existingUser.id)
         .single();
 
       if (!profile) {
-        Alert.alert(
-          'Profile Not Found',
-          'Your account exists but has no profile. Please complete your profile setup.',
-          [{ text: 'OK' }]
-        );
+        Alert.alert('Profile Not Found', 'Your account exists but has no profile. Please complete your profile setup.', [{ text: 'OK' }]);
         return;
       }
 
-      setOtpSent(true);
-      Alert.alert(
-        'OTP Sent (Dev Mode)',
-        `Development OTP: ${STATIC_OTP}\n\nIn production, this will be sent via SMS.`,
-        [{ text: 'OK' }]
-      );
+      const result = await sendOTP(formatPhone(phone));
+      if (result.success) {
+        setOtpSent(true);
+        Alert.alert('OTP Sent', 'We have sent an OTP to your phone number.', [{ text: 'OK' }]);
+      } else {
+        Alert.alert('Failed to send OTP', result.error || 'Please try again.');
+      }
     } catch (error) {
       console.error('Login check error:', error);
       Alert.alert('Error', 'Failed to verify phone number. Please try again.');
@@ -88,82 +80,16 @@ export const LoginScreen = ({ navigation }) => {
       return;
     }
 
-    if (otp !== STATIC_OTP) {
-      Alert.alert('Invalid OTP', 'The OTP you entered is incorrect. Please try again.');
-      return;
-    }
-
     setLoading(true);
 
     try {
-      console.log('Logging in user with phone:', phone);
-
-      // Get user data
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('phone_number', phone)
-        .single();
-
-      if (userError || !userData) {
-        throw new Error('User not found');
+      const result = await verifyOTP(formatPhone(phone), otp);
+      if (result.success) {
+        Alert.alert('Login Successful!', 'Welcome back!', [{ text: 'OK' }]);
+        // Navigation will happen automatically via AppNavigator from store state
+      } else {
+        Alert.alert('Invalid OTP', result.error || 'The OTP you entered is incorrect. Please try again.');
       }
-
-      // Get profile data with related data
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select(`
-          *,
-          community:communities(id, name),
-          caste:castes(id, name)
-        `)
-        .eq('user_id', userData.id)
-        .single();
-
-      if (profileError || !profileData) {
-        throw new Error('Profile not found');
-      }
-
-      console.log('User logged in successfully:', userData.id);
-
-      // Update last login
-      await supabase
-        .from('users')
-        .update({ last_login_at: new Date().toISOString() })
-        .eq('id', userData.id);
-
-      // Set user and profile in store
-      const localUserData = {
-        id: userData.id,
-        profileId: profileData.id,
-        phone: userData.phone_number,
-        firstName: profileData.first_name,
-        lastName: profileData.last_name,
-        gender: profileData.gender,
-        dob: profileData.dob,
-        education: profileData.education,
-        profession: profileData.profession,
-        income: profileData.income_range,
-        bio: profileData.bio,
-        city: profileData.city,
-        state: profileData.state,
-        country: profileData.country,
-        community: profileData.community,
-        caste: profileData.caste,
-        verified: profileData.verification_status === 'verified',
-        createdAt: userData.created_at,
-      };
-
-      setUser(localUserData);
-      setProfile(profileData);
-
-      Alert.alert(
-        'Login Successful!',
-        'Welcome back!',
-        [{ text: 'OK' }]
-      );
-
-      // Navigation will happen automatically via AppNavigator
     } catch (error) {
       console.error('Login error:', error);
       Alert.alert('Error', error.message || 'Failed to login. Please try again.');
@@ -219,11 +145,7 @@ export const LoginScreen = ({ navigation }) => {
                 keyboardType="number-pad"
                 style={styles.input}
               />
-              <View style={styles.devHint}>
-                <Text style={styles.devHintText}>
-                  💡 Dev Mode: Use OTP <Text style={styles.devHintCode}>{STATIC_OTP}</Text>
-                </Text>
-              </View>
+              
             </>
           )}
         </View>
