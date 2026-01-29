@@ -48,14 +48,15 @@ export const useStore = create((set, get) => ({
   async initializeAuth() {
     try {
       set({ isLoading: true });
-      const user = await authService.getCurrentUser();
+      const result = await authService.getCurrentUser();
       
-      if (user) {
-        set({ user, isAuthenticated: true });
-        
-        const { data: profile } = await profileService.getProfileByUserId(user.id);
-        if (profile) {
-          set({ profile });
+      if (result && result.user) {
+        set({ user: result.user, isAuthenticated: true });
+        if (result.profile) {
+          set({ profile: result.profile });
+        } else {
+          const { data: profile } = await profileService.getProfileByUserId(result.user.id);
+          if (profile) set({ profile });
         }
       }
     } catch (error) {
@@ -95,9 +96,11 @@ export const useStore = create((set, get) => ({
           isAuthenticated: true 
         });
         
-        const { data: profile } = await profileService.getProfileByUserId(result.user.id);
-        if (profile) {
-          set({ profile });
+        if (result.profile) {
+          set({ profile: result.profile });
+        } else {
+          const { data: profile } = await profileService.getProfileByUserId(result.user.id);
+          if (profile) set({ profile });
         }
       } else {
         set({ error: result.error });

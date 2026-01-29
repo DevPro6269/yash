@@ -7,27 +7,38 @@ import { useStore } from '../../store/useStore';
 import { profileService } from '../../services';
 import { supabase } from '../../config/supabase';
 
-const STATIC_OTP = '123456'; // Development OTP - remove in production
 
 export const AuthScreen = ({ navigation }) => {
-  const { setUser, setProfile, wizardData } = useStore();
+  const { setUser, setProfile, wizardData, sendOTP, verifyOTP } = useStore();
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSendOTP = () => {
+  // Sanitize inputs
+  const handlePhoneChange = (text) => setPhone(text.replace(/\D/g, '').slice(0, 10));
+  const handleOtpChange = (text) => setOtp(text.replace(/\D/g, '').slice(0, 6));
+  const formatPhone = (raw) => `+91${raw}`; // Adjust to support multiple countries if needed
+
+  const handleSendOTP = async () => {
     if (phone.length !== 10) {
       Alert.alert('Invalid Phone', 'Please enter a valid 10-digit phone number');
       return;
     }
-    setOtpSent(true);
-    // Development mode - show static OTP
-    Alert.alert(
-      'OTP Sent (Dev Mode)', 
-      `Development OTP: ${STATIC_OTP}\n\nIn production, this will be sent via SMS.`,
-      [{ text: 'OK' }]
-    );
+    setLoading(true);
+    try {
+      const result = await sendOTP(formatPhone(phone));
+      if (result.success) {
+        setOtpSent(true);
+        Alert.alert('OTP Sent', 'We have sent an OTP to your phone number.', [{ text: 'OK' }]);
+      } else {
+        Alert.alert('Failed to send OTP', result.error || 'Please try again.');
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Failed to send OTP. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleVerifyOTP = async () => {
@@ -36,73 +47,35 @@ export const AuthScreen = ({ navigation }) => {
       return;
     }
 
-    // Verify static OTP in development
-    if (otp !== STATIC_OTP) {
-      Alert.alert('Invalid OTP', 'The OTP you entered is incorrect. Please try again.');
-      return;
-    }
-
     setLoading(true);
     
     try {
-      console.log('Checking if user exists with phone:', phone);
+      // Verify via Supabase + Twilio
+      const result = await verifyOTP(formatPhone(phone), otp);
+      if (!result.success) {
+        Alert.alert('Invalid OTP', result.error || 'The OTP you entered is incorrect. Please try again.');
+        return;
+      }
+
+      const authedUser = result.user; // This is the DB user returned from getOrCreateUser
       
-      // Step 1: Check if user already exists with this phone number
-      const { data: existingUser, error: checkError } = await supabase
-        .from('users')
+      // Prevent duplicate profile creation
+      const { data: existingProfile } = await supabase
+        .from('profiles')
         .select('id')
-        .eq('phone_number', phone)
+        .eq('user_id', authedUser.id)
         .single();
 
-      let userData;
-
-      if (existingUser) {
-        console.log('User already exists with ID:', existingUser.id);
-        
-        // Check if this user already has a profile
-        const { data: existingProfile, error: profileCheckError } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('user_id', existingUser.id)
-          .single();
-
-        if (existingProfile) {
-          // Profile already exists - show error
-          Alert.alert(
-            'Profile Already Exists',
-            'A profile with this phone number already exists. Please use a different phone number or login to your existing account.',
-            [{ text: 'OK' }]
-          );
-          return;
-        }
-
-        // User exists but no profile - use existing user
-        userData = existingUser;
-        console.log('Using existing user, creating new profile');
-      } else {
-        // No user exists - create new user
-        console.log('Creating new user with phone:', phone);
-        
-        const { data: newUser, error: userError } = await supabase
-          .from('users')
-          .insert({
-            phone_number: phone,
-            role: 'user',
-            account_status: 'active',
-          })
-          .select()
-          .single();
-
-        if (userError) {
-          console.error('User creation error:', userError);
-          throw new Error(userError.message);
-        }
-
-        userData = newUser;
-        console.log('User created with ID:', userData.id);
+      if (existingProfile) {
+        Alert.alert(
+          'Profile Already Exists',
+          'A profile with this phone number already exists. Please login to your existing account.',
+          [{ text: 'OK' }]
+        );
+        return;
       }
       
-      // Step 2: Create profile in database
+      // Create profile in database
       const profileData = {
         // Identity
         gender: wizardData.identity.gender,
@@ -141,7 +114,7 @@ export const AuthScreen = ({ navigation }) => {
 
       console.log('Creating profile with data:', profileData);
 
-      const profileResult = await profileService.createProfile(userData.id, profileData);
+      const profileResult = await profileService.createProfile(authedUser.id, profileData);
 
       if (!profileResult.success) {
         throw new Error(profileResult.error || 'Failed to create profile');
@@ -212,22 +185,8 @@ export const AuthScreen = ({ navigation }) => {
         }
       }
 
-      // Update local store with user data
-      const localUserData = {
-        id: userData.id,
-        profileId: profileResult.data.id,
-        phone,
-        ...wizardData.identity,
-        ...wizardData.basic,
-        ...wizardData.about,
-        ...wizardData.family,
-        ...wizardData.address,
-        ...wizardData.photos,
-        verified: false,
-        createdAt: new Date().toISOString(),
-      };
-      
-      setUser(localUserData);
+      // Update local store with minimal required info
+      setUser({ id: authedUser.id, profileId: profileResult.data.id, phone });
       setProfile(profileResult.data);
       
       Alert.alert(
@@ -277,7 +236,7 @@ export const AuthScreen = ({ navigation }) => {
             <Input
               label="Phone Number"
               value={phone}
-              onChangeText={setPhone}
+              onChangeText={handlePhoneChange}
               placeholder="Enter 10-digit phone number"
               keyboardType="phone-pad"
               style={styles.input}
@@ -287,16 +246,12 @@ export const AuthScreen = ({ navigation }) => {
               <Input
                 label="OTP"
                 value={otp}
-                onChangeText={setOtp}
+                onChangeText={handleOtpChange}
                 placeholder="Enter 6-digit OTP"
                 keyboardType="number-pad"
                 style={styles.input}
               />
-              <View style={styles.devHint}>
-                <Text style={styles.devHintText}>
-                  💡 Dev Mode: Use OTP <Text style={styles.devHintCode}>{STATIC_OTP}</Text>
-                </Text>
-              </View>
+              
             </>
           )}
         </View>
