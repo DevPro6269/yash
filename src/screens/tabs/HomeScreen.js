@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,9 +7,10 @@ import { connectionService } from '../../services/connectionService';
 import { colors, typography, spacing, borderRadius } from '../../theme';
 import { supabase } from '../../config/supabase';
 import { useStore } from '../../store/useStore';
+import { useFocusEffect } from '@react-navigation/native';
 
 export const HomeScreen = ({ navigation }) => {
-  const { user ,profile } = useStore();
+  const { user, profile, initializeAuth } = useStore();
   const [profiles, setProfiles] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -60,6 +61,15 @@ export const HomeScreen = ({ navigation }) => {
       photo,
     };
   };
+
+  // Ensure user/profile are hydrated when landing on Home
+  useFocusEffect(
+    useCallback(() => {
+      if (!user || !profile) {
+        initializeAuth();
+      }
+    }, [user?.id, profile?.id, initializeAuth])
+  );
 
   useEffect(() => {
     const fetchProfiles = async () => {
