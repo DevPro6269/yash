@@ -1,16 +1,63 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Alert } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Alert, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { Card, Badge, Button } from '../../components';
+import { Card, Badge, Button, Input } from '../../components';
 import { colors, typography, spacing, borderRadius } from '../../theme';
 import { useStore } from '../../store/useStore';
 
 export const ProfileScreen = ({ navigation }) => {
-  const { user, logout } = useStore();
+  const { profile, updateProfile, logout, initializeAuth } = useStore();
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({});
+  const [refreshing, setRefreshing] = useState(false);
 
-  const handleEditProfile = () => {
-    Alert.alert('Edit Profile', 'Edit profile functionality coming soon');
+  const primaryPhoto = useMemo(() => {
+    const photos = Array.isArray(profile?.photos) ? profile.photos : [];
+    const publicPhotos = photos.filter(p => !p?.is_private);
+    const primary = publicPhotos.find(p => p?.is_primary) || publicPhotos[0];
+    return primary?.image_url || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=800&auto=format&fit=crop';
+  }, [profile?.photos]);
+
+  const getAge = (dob) => {
+    if (!dob) return null;
+    const d = new Date(dob);
+    const diff = Date.now() - d.getTime();
+    const ageDt = new Date(diff);
+    return Math.abs(ageDt.getUTCFullYear() - 1970);
+  };
+
+  const startEdit = () => {
+    setForm({
+      first_name: profile?.first_name || '',
+      last_name: profile?.last_name || '',
+      city: profile?.city || '',
+      state: profile?.state || '',
+      education: profile?.education || '',
+      profession: profile?.profession || '',
+      income_range: profile?.income_range || '',
+      bio: profile?.bio || '',
+    });
+    setIsEditing(true);
+  };
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      const updates = { ...form };
+      const res = await updateProfile(updates);
+      if (!res.success) {
+        Alert.alert('Update Failed', res.error || 'Could not update profile');
+        return;
+      }
+      setIsEditing(false);
+      Alert.alert('Success', 'Profile updated successfully');
+    } catch (e) {
+      Alert.alert('Error', e.message || 'Failed to update');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handlePauseProfile = () => {
@@ -38,7 +85,7 @@ export const ProfileScreen = ({ navigation }) => {
     ]);
   };
 
-  if (!user) {
+  if (!profile) {
     return null;
   }
 
@@ -52,26 +99,42 @@ export const ProfileScreen = ({ navigation }) => {
       >
         <View style={styles.profileHeader}>
           <Image
-            source={{ uri: user.photo || 'https://i.pravatar.cc/300' }}
+            source={{ uri: primaryPhoto }}
             style={styles.profilePhoto}
           />
           <Text style={styles.profileName}>
-            {user.firstName} {user.lastName}
+            {[profile.first_name, profile.last_name].filter(Boolean).join(' ')}
           </Text>
           <Text style={styles.profileDetails}>
-            {user.age || '25'} • {user.city}
+            {getAge(profile.dob) || '—'} • {profile.city || '—'}
           </Text>
           
           <View style={styles.verificationBadge}>
             <Badge
-              label={user.verified ? 'Verified' : 'Pending Verification'}
-              variant={user.verified ? 'verified' : 'pending'}
+              label={profile.verification_status === 'verified' ? 'Verified' : 'Pending Verification'}
+              variant={profile.verification_status === 'verified' ? 'verified' : 'pending'}
             />
           </View>
         </View>
       </LinearGradient>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={async () => {
+              setRefreshing(true);
+              try {
+                await initializeAuth();
+              } finally {
+                setRefreshing(false);
+              }
+            }}
+          />
+        }
+      >
         <Card style={styles.statsCard}>
           <Text style={styles.sectionTitle}>Profile Completion</Text>
           <View style={styles.progressBar}>
@@ -100,30 +163,58 @@ export const ProfileScreen = ({ navigation }) => {
 
         <Card style={styles.infoCard}>
           <Text style={styles.sectionTitle}>About</Text>
-          <View style={styles.infoRow}>
-            <Ionicons name="briefcase-outline" size={20} color={colors.text.secondary} />
-            <Text style={styles.infoText}>{user.profession}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Ionicons name="school-outline" size={20} color={colors.text.secondary} />
-            <Text style={styles.infoText}>{user.education}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Ionicons name="cash-outline" size={20} color={colors.text.secondary} />
-            <Text style={styles.infoText}>{user.income}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Ionicons name="resize-outline" size={20} color={colors.text.secondary} />
-            <Text style={styles.infoText}>{user.height}</Text>
-          </View>
+          {!isEditing ? (
+            <>
+              <View style={styles.infoRow}>
+                <Ionicons name="briefcase-outline" size={20} color={colors.text.secondary} />
+                <Text style={styles.infoText}>{profile.profession || '—'}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Ionicons name="school-outline" size={20} color={colors.text.secondary} />
+                <Text style={styles.infoText}>{profile.education || '—'}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Ionicons name="cash-outline" size={20} color={colors.text.secondary} />
+                <Text style={styles.infoText}>{profile.income_range || '—'}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Ionicons name="location-outline" size={20} color={colors.text.secondary} />
+                <Text style={styles.infoText}>{[profile.city, profile.state].filter(Boolean).join(', ') || '—'}</Text>
+              </View>
+              {profile.bio ? (
+                <View style={[styles.infoRow, { alignItems: 'flex-start' }]}>
+                  <Ionicons name="information-circle-outline" size={20} color={colors.text.secondary} />
+                  <Text style={styles.infoText}>{profile.bio}</Text>
+                </View>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <Input label="First Name" value={form.first_name} onChangeText={(t) => setForm({ ...form, first_name: t })} style={styles.input} />
+              <Input label="Last Name" value={form.last_name} onChangeText={(t) => setForm({ ...form, last_name: t })} style={styles.input} />
+              <Input label="City" value={form.city} onChangeText={(t) => setForm({ ...form, city: t })} style={styles.input} />
+              <Input label="State" value={form.state} onChangeText={(t) => setForm({ ...form, state: t })} style={styles.input} />
+              <Input label="Education" value={form.education} onChangeText={(t) => setForm({ ...form, education: t })} style={styles.input} />
+              <Input label="Profession" value={form.profession} onChangeText={(t) => setForm({ ...form, profession: t })} style={styles.input} />
+              <Input label="Income Range" value={form.income_range} onChangeText={(t) => setForm({ ...form, income_range: t })} style={styles.input} />
+              <Input label="Bio" value={form.bio} onChangeText={(t) => setForm({ ...form, bio: t })} style={styles.input} multiline />
+            </>
+          )}
         </Card>
 
         <Card style={styles.actionCard}>
-          <TouchableOpacity style={styles.actionItem} onPress={handleEditProfile}>
-            <Ionicons name="create-outline" size={24} color={colors.primary.main} />
-            <Text style={styles.actionText}>Edit Profile</Text>
-            <Ionicons name="chevron-forward" size={24} color={colors.text.light} />
-          </TouchableOpacity>
+          {!isEditing ? (
+            <TouchableOpacity style={styles.actionItem} onPress={startEdit}>
+              <Ionicons name="create-outline" size={24} color={colors.primary.main} />
+              <Text style={styles.actionText}>Edit Profile</Text>
+              <Ionicons name="chevron-forward" size={24} color={colors.text.light} />
+            </TouchableOpacity>
+          ) : (
+            <View style={{ flexDirection: 'row', padding: spacing.md, gap: spacing.md }}>
+              <Button title="Cancel" variant="outline" style={{ flex: 1 }} onPress={() => setIsEditing(false)} />
+              <Button title="Save" style={{ flex: 1 }} onPress={handleSave} loading={saving} />
+            </View>
+          )}
 
           <View style={styles.divider} />
 
@@ -249,6 +340,9 @@ const styles = StyleSheet.create({
   infoText: {
     ...typography.body1,
     color: colors.text.primary,
+  },
+  input: {
+    marginBottom: spacing.sm,
   },
   actionCard: {
     marginBottom: spacing.md,

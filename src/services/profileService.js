@@ -1,7 +1,7 @@
 import { supabase } from '../config/supabase';
 
 export const profileService = {
-  async getProfileByUserId(userId) {
+  async getProfile(profileId) {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -11,7 +11,7 @@ export const profileService = {
           caste:castes(id, name),
           photos:profile_photos(*)
         `)
-        .eq('user_id', userId)
+        .eq('id', profileId)
         .single();
 
       if (error && error.code !== 'PGRST116') throw error;
@@ -22,12 +22,12 @@ export const profileService = {
     }
   },
 
-  async createProfile(userId, profileData) {
+  async createProfile(profileId, profileData) {
     try {
       const { data, error } = await supabase
         .from('profiles')
         .insert({
-          user_id: userId,
+          id: profileId,
           ...profileData,
         })
         .select()

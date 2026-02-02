@@ -54,9 +54,6 @@ export const useStore = create((set, get) => ({
         set({ user: result.user, isAuthenticated: true });
         if (result.profile) {
           set({ profile: result.profile });
-        } else {
-          const { data: profile } = await profileService.getProfileByUserId(result.user.id);
-          if (profile) set({ profile });
         }
       }
     } catch (error) {
@@ -98,9 +95,6 @@ export const useStore = create((set, get) => ({
         
         if (result.profile) {
           set({ profile: result.profile });
-        } else {
-          const { data: profile } = await profileService.getProfileByUserId(result.user.id);
-          if (profile) set({ profile });
         }
       } else {
         set({ error: result.error });

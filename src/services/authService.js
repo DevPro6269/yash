@@ -63,74 +63,16 @@ export const authService = {
       const user = data.user;
       if (!user) throw new Error('No user returned after OTP verification');
 
-      const dbUser = await this.getOrCreateUser(user);
+      // Fetch profile (may not exist yet for new users)
+      const { data: profile } = await profileService.getProfile(user.id);
       
-      return { success: true, user: dbUser, session: data.session };
+      return { success: true, user: data.user, profile, session: data.session };
     } catch (error) {
       console.error('Verify OTP error:', error);
       return { success: false, error: error.message };
     }
   },
 
-  async getOrCreateUser(authUser) {
-    try {
-      const { data: existingUser, error: fetchError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('auth_id', authUser.id)
-        .single();
-
-      if (existingUser) {
-        await supabase
-          .from('users')
-          .update({ last_login_at: new Date().toISOString() })
-          .eq('id', existingUser.id);
-        
-        return existingUser;
-      }
-
-      // Fallback: try to find by phone number if auth_id was never backfilled
-      const phoneStorage = normalizePhoneStorageIN(authUser.phone);
-      if (phoneStorage) {
-        const { data: userByPhone } = await supabase
-          .from('users')
-          .select('*')
-          .eq('phone_number', phoneStorage)
-          .single();
-        if (userByPhone) {
-          const { data: updatedUser } = await supabase
-            .from('users')
-            .update({
-              auth_id: authUser.id,
-              last_login_at: new Date().toISOString(),
-              phone_number: phoneStorage,
-            })
-            .eq('id', userByPhone.id)
-            .select()
-            .single();
-          return updatedUser || userByPhone;
-        }
-      }
-
-      const { data: newUser, error: createError } = await supabase
-        .from('users')
-        .insert({
-          auth_id: authUser.id,
-          phone_number: phoneStorage || normalizePhoneStorageIN(authUser.phone),
-          role: 'user',
-          account_status: 'active',
-          last_login_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (createError) throw createError;
-      return newUser;
-    } catch (error) {
-      console.error('Get or create user error:', error);
-      throw error;
-    }
-  },
 
   async getCurrentUser() {
     try {
@@ -139,20 +81,11 @@ export const authService = {
       if (error) throw error;
       if (!user) return null;
 
-      const { data: dbUser } = await supabase
-        .from('users')
-        .select('*')
-        .eq('auth_id', user.id)
-        .single();
-
-      if (!dbUser) return null;
-
-      console.log('db user is', { id: dbUser.id });
-
-      const { data: profile } = await profileService.getProfileByUserId(dbUser.id);
-      // profile may be null if the user hasn't created one yet
+      // Fetch profile directly using auth user id
+      const { data: profile } = await profileService.getProfile(user.id);
       console.log('Get current Profile response:', { profile });
-      return { user: dbUser, profile: profile || null };
+      
+      return { user, profile: profile || null };
     } catch (error) {
       console.error('Get current user error:', error);
       return null;

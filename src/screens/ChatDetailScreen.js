@@ -53,13 +53,22 @@ export const ChatDetailScreen = ({ route, navigation }) => {
   };
 
   useEffect(() => {
-    if (!profile?.id) return;
+    if (!profile?.id || !chatId) {
+      console.warn('ChatDetail: missing identifiers', { userId: profile?.id, chatId });
+      return;
+    }
     loadHeader();
     loadMessages();
+    // mark conversation as read when opening
+    chatService.markConversationRead(chatId, profile.id);
     // Subscribe to new messages
     subRef.current = chatService.subscribeToMessages(chatId, (newMsg) => {
       setMessages(prev => [...prev, { id: newMsg.id, text: newMsg.content, senderId: newMsg.sender_id, timestamp: new Date(newMsg.created_at).toLocaleTimeString() }]);
-    });
+      // if message from other user, mark as read
+      if (newMsg.sender_id !== profile.id) {
+        chatService.markConversationRead(chatId, profile.id);
+      }
+    }, (status) => console.log('Chat realtime status:', status));
     return () => {
       chatService.unsubscribeFromMessages(subRef.current);
     };

@@ -6,6 +6,8 @@ import { colors, typography, spacing } from '../../theme';
 import { useStore } from '../../store/useStore';
 import { profileService } from '../../services';
 import { supabase } from '../../config/supabase';
+import * as FileSystem from 'expo-file-system';
+import { decode } from 'base64-arraybuffer';
 
 
 export const AuthScreen = ({ navigation }) => {
@@ -57,13 +59,13 @@ export const AuthScreen = ({ navigation }) => {
         return;
       }
 
-      const authedUser = result.user; // This is the DB user returned from getOrCreateUser
+      const authedUser = result.user; // This is the auth.users object
       
       // Prevent duplicate profile creation
       const { data: existingProfile } = await supabase
         .from('profiles')
         .select('id')
-        .eq('user_id', authedUser.id)
+        .eq('id', authedUser.id)
         .single();
 
       if (existingProfile) {
@@ -127,10 +129,13 @@ export const AuthScreen = ({ navigation }) => {
         try {
           console.log('Uploading profile photo to storage...');
           
-          // Read the file from local URI
-          const response = await fetch(wizardData.photos.photo);
-          const blob = await response.blob();
-          const arrayBuffer = await new Response(blob).arrayBuffer();
+          // Read the file from local URI using FileSystem (works with React Native file URIs)
+          const base64 = await FileSystem.readAsStringAsync(wizardData.photos.photo, {
+            encoding: 'base64',
+          });
+          
+          // Convert base64 to ArrayBuffer
+          const arrayBuffer = decode(base64);
           
           // Generate unique filename
           const fileExt = wizardData.photos.photo.split('.').pop();

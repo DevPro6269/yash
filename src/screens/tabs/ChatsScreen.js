@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,11 +6,14 @@ import { Card } from '../../components';
 import { colors, typography, spacing, borderRadius } from '../../theme';
 import { useStore } from '../../store/useStore';
 import { chatService } from '../../services/chatService';
+import { useFocusEffect } from '@react-navigation/native';
 
 export const ChatsScreen = ({ navigation }) => {
   const { profile } = useStore();
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(false);
+  const subRef = useRef(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const mapConversation = (c) => {
     const me = profile?.id;
@@ -29,21 +32,56 @@ export const ChatsScreen = ({ navigation }) => {
     };
   };
 
-  useEffect(() => {
-    const load = async () => {
-      if (!profile?.id) return;
-      setLoading(true);
-      try {
-        const res = await chatService.getMyConversations(profile.id);
-        if (res.success) {
-          setChats((res.data || []).map(mapConversation));
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+      const load = async () => {
+        if (!profile?.id) return;
+        setLoading(true);
+        try {
+          const res = await chatService.getMyConversations(profile.id);
+          let items = (res.success ? (res.data || []) : []).map(mapConversation);
+          // merge unread counts
+          const uc = await chatService.getUnreadCountsByConversation(profile.id);
+          const map = new Map((uc.success ? uc.data : []).map(r => [r.conversation_id, r.unread_count]));
+          items = items.map(it => ({ ...it, unreadCount: map.get(it.id) || 0 }));
+          if (isActive) setChats(items);
+        } finally {
+          if (isActive) setLoading(false);
         }
-      } finally {
-        setLoading(false);
+      };
+      load();
+
+      // subscribe to message inserts to refresh list/unread while focused only
+      if (subRef.current) {
+        chatService.unsubscribeFromMessages(subRef.current);
       }
-    };
-    load();
-  }, [profile?.id]);
+      subRef.current = chatService.subscribeToAllMessages(async () => {
+        await load();
+      });
+
+      return () => {
+        isActive = false;
+        chatService.unsubscribeFromMessages(subRef.current);
+        subRef.current = null;
+      };
+    }, [profile?.id])
+  );
+
+  const onRefresh = async () => {
+    if (!profile?.id) return;
+    setRefreshing(true);
+    try {
+      const res = await chatService.getMyConversations(profile.id);
+      let items = (res.success ? (res.data || []) : []).map(mapConversation);
+      const uc = await chatService.getUnreadCountsByConversation(profile.id);
+      const map = new Map((uc.success ? uc.data : []).map(r => [r.conversation_id, r.unread_count]));
+      items = items.map(it => ({ ...it, unreadCount: map.get(it.id) || 0 }));
+      setChats(items);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const handleChatPress = (chatId) => {
     navigation.navigate('ChatDetail', { chatId });
@@ -92,6 +130,8 @@ export const ChatsScreen = ({ navigation }) => {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="chatbubbles-outline" size={64} color={colors.text.light} />

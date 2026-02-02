@@ -36,29 +36,9 @@ export const LoginScreen = ({ navigation }) => {
     setLoading(true);
 
     try {
-      // Optional: ensure the user has a profile before sending OTP
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('phone_number', phone)
-        .single();
-
-      if (!existingUser) {
-        Alert.alert('Account Not Found', 'No account exists with this phone number. Please create a new profile.', [{ text: 'OK' }]);
-        return;
-      }
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', existingUser.id)
-        .single();
-
-      if (!profile) {
-        Alert.alert('Profile Not Found', 'Your account exists but has no profile. Please complete your profile setup.', [{ text: 'OK' }]);
-        return;
-      }
-
+      // Note: With new schema, we can't pre-check if profile exists by phone
+      // since auth.users stores phone and profiles.id = auth.uid()
+      // Just send OTP and let the auth flow handle it
       const result = await sendOTP(formatPhone(phone));
       if (result.success) {
         setOtpSent(true);

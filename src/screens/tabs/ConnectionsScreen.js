@@ -12,6 +12,7 @@ export const ConnectionsScreen = () => {
   const [activeTab, setActiveTab] = useState('received');
   const [connections, setConnections] = useState({ received: [], sent: [] });
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const loadData = async () => {
     if (!profile?.id) return;
@@ -75,6 +76,15 @@ export const ConnectionsScreen = () => {
     // For simplicity, decline own pending sent request (or implement a delete endpoint later)
     const res = await connectionService.declineConnectionRequest(id);
     if (res.success) loadData();
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await loadData();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const renderReceivedRequest = ({ item }) => (
@@ -177,6 +187,8 @@ export const ConnectionsScreen = () => {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="people-outline" size={64} color={colors.text.light} />

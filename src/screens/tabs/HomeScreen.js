@@ -15,6 +15,7 @@ export const HomeScreen = ({ navigation }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const getAge = (dob) => {
     if (!dob) return null;
@@ -104,7 +105,7 @@ export const HomeScreen = ({ navigation }) => {
 
         // Exclude current user's own profile if available
         if (profile?.id) {
-          query = query.neq('user_id', profile.id);
+          query = query.neq('id', profile.id);
         }
 
         // Show opposite gender profiles always
@@ -144,6 +145,62 @@ export const HomeScreen = ({ navigation }) => {
     };
 
     fetchProfiles();
+  }, [profile?.gender, profile?.id]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      // Re-run effect logic by toggling a dependency or directly call same fetch
+      // Duplicating minimal fetch here to avoid restructuring
+      setError(null);
+      const g = (profile?.gender || '').toLowerCase();
+      if (!g) {
+        setProfiles([]);
+        setError('Please set your gender to see matches');
+        return;
+      }
+      let query = supabase
+        .from('profiles')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          dob,
+          profession,
+          education,
+          city,
+          state,
+          height_cm,
+          bio,
+          verification_status,
+          profile_photos ( image_url, is_primary, is_private )
+        `)
+        .order('id', { ascending: false })
+        .limit(50);
+      if (profile?.id) query = query.neq('id', profile.id);
+      const targetGender = g === 'male' ? 'female' : g === 'female' ? 'male' : null;
+      if (targetGender) query = query.eq('gender', targetGender);
+      const { data, error } = await query;
+      if (error) throw error;
+      let mapped = (data || []).map(mapProfile);
+      if (profile?.id) {
+        const { data: connsRes, success } = await connectionService.getMyConnections(profile.id);
+        if (success && Array.isArray(connsRes)) {
+          const statusMap = new Map();
+          connsRes.forEach((c) => {
+            const otherId = c.sender_id === profile.id ? c.receiver_id : c.sender_id;
+            statusMap.set(otherId, c.status);
+          });
+          mapped = mapped.map((p) => ({ ...p, requestStatus: statusMap.get(p.id) || p.requestStatus }));
+          mapped = mapped.filter((p) => !statusMap.has(p.id));
+        }
+      }
+      setProfiles(mapped);
+    } catch (e) {
+      console.error('Refresh profiles failed:', e);
+    } finally {
+      setRefreshing(false);
+    }
   }, [profile?.gender, profile?.id]);
 
   const [requestingId, setRequestingId] = useState(null);
@@ -230,6 +287,8 @@ export const HomeScreen = ({ navigation }) => {
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={[styles.listContent, profiles.length === 0 && { paddingTop: spacing.xl }]}
         showsVerticalScrollIndicator={false}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <Ionicons name={loading ? 'hourglass' : 'alert-circle'} size={28} color={colors.text.secondary} />

@@ -17,6 +17,46 @@ export const chatService = {
     }
   },
 
+  // Get unread counts per conversation using a Postgres RPC
+  async getUnreadCountsByConversation(userId) {
+    try {
+      const { data, error } = await supabase
+        .rpc('unread_counts_for_user', { uid: userId });
+      if (error) throw error;
+      // Expect array of { conversation_id, unread_count }
+      return { success: true, data: data || [] };
+    } catch (error) {
+      console.error('Get unread counts by conversation error:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  // Mark a conversation as read for a user using RPC
+  async markConversationRead(conversationId, userId) {
+    try {
+      const { data, error } = await supabase
+        .rpc('mark_conversation_read', { cid: conversationId, uid: userId });
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Mark conversation read error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Subscribe to all new messages (inserts). Client can decide how to handle.
+  subscribeToAllMessages(callback) {
+    const subscription = supabase
+      .channel('messages:all')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        (payload) => callback(payload.new)
+      )
+      .subscribe();
+    return subscription;
+  },
+
   async getMyConversations(userId) {
     try {
       let query = supabase
@@ -112,8 +152,8 @@ export const chatService = {
     }
   },
 
-  subscribeToMessages(conversationId, callback) {
-    const subscription = supabase
+  subscribeToMessages(conversationId, callback, onStatus) {
+    const channel = supabase
       .channel(`messages:${conversationId}`)
       .on(
         'postgres_changes',
@@ -124,17 +164,36 @@ export const chatService = {
           filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
-          callback(payload.new);
+          try {
+            callback(payload.new);
+          } catch (e) {
+            console.error('Realtime message handler error:', e);
+          }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (onStatus) onStatus(status);
+        if (status === 'SUBSCRIBED') {
+          // Ready to receive realtime
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('Realtime channel error for conversation', conversationId);
+        } else if (status === 'TIMED_OUT') {
+          console.warn('Realtime channel timed out for conversation', conversationId);
+        } else if (status === 'CLOSED') {
+          // closed
+        }
+      });
 
-    return subscription;
+    return channel;
   },
 
-  unsubscribeFromMessages(subscription) {
-    if (subscription) {
-      supabase.removeChannel(subscription);
+  unsubscribeFromMessages(channel) {
+    if (channel) {
+      try {
+        supabase.removeChannel(channel);
+      } catch (e) {
+        console.error('Remove channel error:', e);
+      }
     }
   },
 
