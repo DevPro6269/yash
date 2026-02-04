@@ -224,7 +224,7 @@ export const HomeScreen = ({ navigation }) => {
   const renderProfile = ({ item }) => (
     <Card style={styles.profileCard}>
       <Image source={{ uri: item.photo }} style={styles.profileImage} />
-      
+
       <View style={styles.profileInfo}>
         <View style={styles.profileHeader}>
           <Text style={styles.profileName}>{item.name}, {item.age}</Text>

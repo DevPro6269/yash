@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Alert, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -108,7 +108,7 @@ export const ProfileScreen = ({ navigation }) => {
           <Text style={styles.profileDetails}>
             {getAge(profile.dob) || '—'} • {profile.city || '—'}
           </Text>
-          
+
           <View style={styles.verificationBadge}>
             <Badge
               label={profile.verification_status === 'verified' ? 'Verified' : 'Pending Verification'}
@@ -143,7 +143,7 @@ export const ProfileScreen = ({ navigation }) => {
           <Text style={styles.progressText}>{completionPercentage}% Complete</Text>
         </Card>
 
-        <Card style={styles.statsCard}>
+        {/* <Card style={styles.statsCard}>
           <Text style={styles.sectionTitle}>Statistics</Text>
           <View style={styles.statsGrid}>
             <View style={styles.statItem}>
@@ -154,12 +154,8 @@ export const ProfileScreen = ({ navigation }) => {
               <Text style={styles.statValue}>8</Text>
               <Text style={styles.statLabel}>Sent</Text>
             </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>5</Text>
-              <Text style={styles.statLabel}>Matches</Text>
-            </View>
           </View>
-        </Card>
+        </Card> */}
 
         <Card style={styles.infoCard}>
           <Text style={styles.sectionTitle}>About</Text>
@@ -218,11 +214,11 @@ export const ProfileScreen = ({ navigation }) => {
 
           <View style={styles.divider} />
 
-          <TouchableOpacity style={styles.actionItem} onPress={handlePauseProfile}>
+          {/* <TouchableOpacity style={styles.actionItem} onPress={handlePauseProfile}>
             <Ionicons name="pause-circle-outline" size={24} color={colors.status.warning} />
             <Text style={styles.actionText}>Pause Profile</Text>
             <Ionicons name="chevron-forward" size={24} color={colors.text.light} />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           <View style={styles.divider} />
 

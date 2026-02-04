@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,6 +6,7 @@ import { colors, typography, spacing, borderRadius } from '../theme';
 import { useStore } from '../store/useStore';
 import { chatService } from '../services/chatService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 
 export const ChatDetailScreen = ({ route, navigation }) => {
   const { chatId } = route.params; // conversation id
@@ -14,6 +15,8 @@ export const ChatDetailScreen = ({ route, navigation }) => {
   const [inputText, setInputText] = useState('');
   const [header, setHeader] = useState({ name: 'Member', photo: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=800&auto=format&fit=crop' });
   const subRef = useRef(null);
+  const listRef = useRef(null);
+  const pollRef = useRef(null);
   const insets = useSafeAreaInsets();
 
   const loadMessages = async () => {
@@ -27,6 +30,15 @@ export const ChatDetailScreen = ({ route, navigation }) => {
       })));
     }
   };
+
+  const scrollToBottom = useCallback(() => {
+    // Defer to the next frame to ensure content size is updated
+    requestAnimationFrame(() => {
+      try {
+        listRef.current?.scrollToEnd({ animated: true });
+      } catch (e) {}
+    });
+  }, []);
 
   const loadHeader = async () => {
     // Fetch conversation to determine other user from connection join
@@ -52,27 +64,66 @@ export const ChatDetailScreen = ({ route, navigation }) => {
     await chatService.sendMessage(chatId, profile?.id, content);
   };
 
-  useEffect(() => {
-    if (!profile?.id || !chatId) {
-      console.warn('ChatDetail: missing identifiers', { userId: profile?.id, chatId });
-      return;
-    }
-    loadHeader();
-    loadMessages();
-    // mark conversation as read when opening
-    chatService.markConversationRead(chatId, profile.id);
-    // Subscribe to new messages
-    subRef.current = chatService.subscribeToMessages(chatId, (newMsg) => {
-      setMessages(prev => [...prev, { id: newMsg.id, text: newMsg.content, senderId: newMsg.sender_id, timestamp: new Date(newMsg.created_at).toLocaleTimeString() }]);
-      // if message from other user, mark as read
-      if (newMsg.sender_id !== profile.id) {
-        chatService.markConversationRead(chatId, profile.id);
+  useFocusEffect(
+    useCallback(() => {
+      if (!profile?.id || !chatId) {
+        console.warn('ChatDetail: missing identifiers', { userId: profile?.id, chatId });
+        return () => {};
       }
-    }, (status) => console.log('Chat realtime status:', status));
-    return () => {
-      chatService.unsubscribeFromMessages(subRef.current);
-    };
-  }, [profile?.id, chatId]);
+
+      let active = true;
+      const init = async () => {
+        console.log('ChatDetail focus init chatId:', chatId);
+        await loadHeader();
+        await loadMessages();
+        chatService.markConversationRead(chatId, profile.id);
+        scrollToBottom();
+      };
+      init();
+
+      // Subscribe while focused only
+      if (subRef.current) {
+        chatService.unsubscribeFromMessages(subRef.current);
+        subRef.current = null;
+      }
+      subRef.current = chatService.subscribeToMessages(
+        chatId,
+        (newMsg) => {
+          if (!active) return;
+          setMessages(prev => [...prev, { id: newMsg.id, text: newMsg.content, senderId: newMsg.sender_id, timestamp: new Date(newMsg.created_at).toLocaleTimeString() }]);
+          scrollToBottom();
+          if (newMsg.sender_id !== profile.id) {
+            chatService.markConversationRead(chatId, profile.id);
+          }
+        },
+        (status) => console.log('Chat realtime status:', status)
+      );
+
+      // lightweight polling fallback while focused (in case realtime delivers late)
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+      pollRef.current = setInterval(() => {
+        loadMessages();
+      }, 4000);
+
+      return () => {
+        active = false;
+        chatService.unsubscribeFromMessages(subRef.current);
+        subRef.current = null;
+        if (pollRef.current) {
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+        }
+      };
+    }, [profile?.id, chatId])
+  );
+
+  useEffect(() => {
+    // Whenever the message list changes, attempt to keep view at the end
+    if (messages?.length) scrollToBottom();
+  }, [messages, scrollToBottom]);
 
   const isInputEmpty = !inputText.trim();
 
@@ -125,12 +176,14 @@ export const ChatDetailScreen = ({ route, navigation }) => {
       </LinearGradient>
 
       <FlatList
+        ref={listRef}
         data={messages}
         renderItem={renderMessage}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[styles.messagesList, { paddingBottom: spacing.xl + Math.max(insets.bottom, 12) + 56 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        onContentSizeChange={scrollToBottom}
       />
 
       <KeyboardAvoidingView
